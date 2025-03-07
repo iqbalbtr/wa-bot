@@ -13,11 +13,10 @@ function getTimeFormat(from : number) {
     const uptimeFormatted = `${uptimeDays} hari, ${uptimeHours % 24} jam, ${uptimeMinutes % 60} menit`;
 
     return uptimeFormatted
-
 }
 
 module.exports = {
-    name: "!status",
+    name: "status",
     description: "Menampilkan status bot, termasuk uptime dan penggunaan sumber daya.",
     execute: async (message: Message, client: ClientType) => {
         try {
@@ -51,8 +50,6 @@ module.exports = {
             message.reply(content);
         } catch (error) {
 
-        } finally {
-            removeLimiterUser(client, message)
-        }
+        } 
     }
 }

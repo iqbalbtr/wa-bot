@@ -3,9 +3,23 @@ import { limiterMiddleware, removeLimiterUser } from "../middleware/limiter";
 
 client.on('message', async (msg) => {
 
-    const prefix = msg.body;
-    const command = client.commands?.get(prefix);
+    const prefix = msg.body.split(process.env.PREFIX!)[1];
+    
+    if (msg.from.endsWith("@c.us")) {
+        
+        const command = client.commands?.get(prefix);
+        
+        if (command)
+            await limiterMiddleware(client, msg, () => command.execute(msg, client));
+    } else {
 
-    if (command)
-        limiterMiddleware(client, msg, () => command.execute(msg, client))
+        const command = client.commands?.get(prefix);
+
+        if (msg.mentionedIds.includes(client.info.wid._serialized as any)) {
+            if (command)
+                await limiterMiddleware(client, msg, () => command.execute(msg, client));
+        }
+    }
+
+    removeLimiterUser(client, msg)
 })

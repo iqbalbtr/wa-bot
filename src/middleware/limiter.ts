@@ -2,7 +2,8 @@ import { Message } from "whatsapp-web.js";
 import { ClientType } from "../types/client";
 
 export function removeLimiterUser(client: ClientType, message: Message) {
-    client.limiter.users.delete(message.from);
+    const userId = message.from.endsWith("@c.us") ? message.from : message.author
+        client.limiter.users.delete(userId!);
 }
 
 export function limiterMiddleware(
@@ -10,22 +11,19 @@ export function limiterMiddleware(
     message: Message,
     next: () => void
 ) {
-    const userId = message.from;
-    const now = Date.now();
-    const cooldownTime = 10 * 1000;
+    return new Promise((resolve) => {
 
-    if (client.limiter.users.size >= client.limiter.max) {
-        return message.reply("⚠️ Server sedang sibuk, coba lagi nanti!");
-    }
+        const now = Date.now();
+        const userId = message.from.endsWith("@c.us") ? message.from : message.author
 
-    const lastRequestTime = client.limiter.users.get(userId);
+        if (client.limiter.users.size >= client.limiter.max) {
+            resolve(message.reply("⚠️ Server sedang sibuk, coba lagi nanti!"));
+        }
 
-    if (lastRequestTime && now - lastRequestTime < cooldownTime) {
-        return message.reply("⏳ Kamu terlalu cepat! Silakan coba lagi nanti.");
-    }
+        client.limiter.users.set(userId!, now);
 
-    client.limiter.users.set(userId, now);
-    client.limiter.userTotal += 1
+        client.limiter.userTotal += 1
 
-    next();
+        resolve(next())
+    })
 }

@@ -11,19 +11,19 @@ function base64ToImage(base64String: string) {
 }
 
 module.exports = {
-  name: "!remove-bg",
+  name: "remove-bg",
   description: "Menghapus latar belakang dari gambar yang dikirim",
   execute: async (message: Message, client: ClientType) => {
     const img = await message.downloadMedia();
 
-    if (!img) return message.reply("Image nya mana bang? 🤦‍♂️");
+    if (!img) return message.reply("Pastikan gambarnya juga dikirim");
 
     if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(img.mimetype)) {
       return message.reply('Waduh format tidak didukung nih. pastikan format gambar jpge, png, jpg, atau webp');
     }
 
     if (base64ToImage(img.data).length >= 7 * 1024 * 1024) {
-      return message.reply("Gambarnya terlalu besar")
+      return message.reply("Ukuran gambar terlalu besar")
     }
 
     const { outputFolderFile, outputFolder, filename } = saveFileToTemp(base64ToImage(img.data), ['img', 'rem-bg'], '.png')
@@ -39,7 +39,7 @@ module.exports = {
 
       const media = new MessageMedia("image/png", Buffer.from(await removeBgBuffer.arrayBuffer()).toString('base64'), filename);
 
-      client.sendMessage(message.from, media, {
+      message.reply(media, message.from, {
         sendMediaAsDocument: true
       })
 
@@ -47,8 +47,6 @@ module.exports = {
     } catch (error) {
       message.reply('Terjadi error saat mengubah gambar')
       console.error(error);
-    } finally {
-      removeLimiterUser(client, message)
-    }
+    } 
   }
 };

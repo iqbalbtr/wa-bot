@@ -9,23 +9,23 @@ function base64ToImage(base64String: string) {
 }
 
 module.exports = {
-    name: "!sticker",
-    description: "Mengonversi gambar atau GIF yang dikirim menjadi stiker WhatsApp.",
+    name: "sticker",
+    description: "Mengonversi gambar yang dikirim menjadi stiker WhatsApp.",
     execute: async (message: Message, client: ClientType) => {
 
         try {
             const img = await message.downloadMedia();
 
             if (!img) {
-                return message.reply("Gambar yang mau dibuat sticker mana bang?");
-            }            
+                return message.reply("Gambar tidak ditemukan dalam pesan");
+            }
 
             if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(img.mimetype)) {
                 return message.reply('Waduh format tidak didukung nih. pastikan format gambar jpge, png, jpg, atau webp');
             }
-           
+
             if (base64ToImage(img.data).length >= 5 * 1024 * 1024) {
-                return message.reply("Gambarnya terlalu besar")
+                return message.reply("Ukuran gambarnya terlalu besar")
             }
 
 
@@ -39,7 +39,7 @@ module.exports = {
 
             const media = new MessageMedia("image/webp", formatToWebp.toString('base64'), img.filename)
 
-            client.sendMessage(message.from, media, {
+            message.reply(media, message.from, {
                 sendMediaAsSticker: true,
                 stickerAuthor: "@ion/iqbalbtr",
                 stickerName: img.filename?.split(".").slice(-1).toString() || 'sticker'
@@ -47,8 +47,6 @@ module.exports = {
         } catch (error) {
             console.error(error);
             message.reply('Terjadi kesalahan saat mengkonversi gambar')
-        } finally {
-            removeLimiterUser(client, message)
         }
     }
 } as CommandType
