@@ -6,8 +6,10 @@ const client = new Client({}) as ClientType;
 
 client.commands = new Map<string, CommandType>();
 client.limiter = {
-    max: 10,
-    users: new Map()
+    max: 5,
+    users: new Map(),
+    userTotal: 0,
+    startTime: Date.now()
 }
 
 export default client;

@@ -1,5 +1,5 @@
 import client from "../bot/bot";
-import { limiterMiddleware } from "../middleware/limiter";
+import { limiterMiddleware, removeLimiterUser } from "../middleware/limiter";
 
 client.on('message', async (msg) => {
 
@@ -7,13 +7,5 @@ client.on('message', async (msg) => {
     const command = client.commands?.get(prefix);
 
     if (command)
-        limiterMiddleware(client, msg, async (rmUser) => {
-            try {
-                return command.execute(msg, client);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                rmUser(client, msg)
-            }
-        })
+        limiterMiddleware(client, msg, () => command.execute(msg, client))
 })

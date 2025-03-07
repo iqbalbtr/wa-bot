@@ -1,14 +1,14 @@
 import { Message } from "whatsapp-web.js";
 import { ClientType } from "../types/client";
 
-function removeLimiterUser(client: ClientType, message: Message) {
+export function removeLimiterUser(client: ClientType, message: Message) {
     client.limiter.users.delete(message.from);
 }
 
 export function limiterMiddleware(
     client: ClientType,
     message: Message,
-    next: (rm: (client: ClientType, message: Message) => void) => void
+    next: () => void
 ) {
     const userId = message.from;
     const now = Date.now();
@@ -25,5 +25,7 @@ export function limiterMiddleware(
     }
 
     client.limiter.users.set(userId, now);
-    next(removeLimiterUser);
+    client.limiter.userTotal += 1
+
+    next();
 }

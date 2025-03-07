@@ -3,7 +3,7 @@ import { Client, Message } from "whatsapp-web.js";
 export type CommandType = {
     name: string;
     description: string;
-    execute: (message: Message, client?: ClientType) => void
+    execute: (message: Message, client: ClientType) => void
 }
 
 export interface ClientType extends Client {
@@ -11,5 +11,7 @@ export interface ClientType extends Client {
     limiter: {
         max: number;
         users: Map<string, number>;
+        userTotal: number;
+        startTime: number
     }
 } 
