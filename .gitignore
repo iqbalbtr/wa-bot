@@ -3,5 +3,7 @@
 node_modules
 pnpm-lock.yaml
 .wwebjs_cache
+.wwebjs_auth
 
+temp
 .env

@@ -3,7 +3,7 @@ import { removeBackground } from "@imgly/background-removal-node";
 import * as fs from 'fs'
 import { saveFileToTemp } from "../lib/util";
 import { ClientType } from "../types/client";
-import { removeLimiterUser } from "../middleware/limiter";
+import { prefix } from "../constant/env";
 
 function base64ToImage(base64String: string) {
   const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
@@ -11,12 +11,13 @@ function base64ToImage(base64String: string) {
 }
 
 module.exports = {
-  name: "remove-bg",
+  name: "rem-bg",
   description: "Menghapus latar belakang dari gambar yang dikirim",
+  usage: `\`${prefix}rem-bg\``,
   execute: async (message: Message, client: ClientType) => {
     const img = await message.downloadMedia();
 
-    if (!img) return message.reply("Pastikan gambarnya juga dikirim");
+    if (!img) return message.reply("Pastikan gambarnya juga dikirim bersama commandnya");
 
     if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(img.mimetype)) {
       return message.reply('Waduh format tidak didukung nih. pastikan format gambar jpge, png, jpg, atau webp');

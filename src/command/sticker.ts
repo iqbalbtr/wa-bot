@@ -1,7 +1,9 @@
 import { Message, MessageMedia } from "whatsapp-web.js";
-import { ClientType, CommandType } from "../types/client";
+import { CommandType } from "../types/client";
 import sharp from "sharp";
-import { removeLimiterUser } from "../middleware/limiter";
+import fs from 'fs'
+import { extractMessageFromCommand } from "../lib/util";
+import { prefix } from "../constant/env";
 
 function base64ToImage(base64String: string) {
     const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
@@ -10,42 +12,69 @@ function base64ToImage(base64String: string) {
 
 module.exports = {
     name: "sticker",
-    description: "Mengonversi gambar yang dikirim menjadi stiker WhatsApp.",
-    execute: async (message: Message, client: ClientType) => {
+    description: "Mengonversi gambar yang dikirim menjadi stiker WhatsApp",
+    usage: `\`${prefix}sticker [nama sticker]\``,
+    execute: async (message: Message) => {
 
         try {
-            const img = await message.downloadMedia();
 
-            if (!img) {
-                return message.reply("Gambar tidak ditemukan dalam pesan");
+            const name = extractMessageFromCommand(message.body) || "sticker";
+
+            if (!message.hasMedia) {
+                return message.reply("Pastikan gambar dikirim bersama pesannya");
             }
 
-            if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(img.mimetype)) {
-                return message.reply('Waduh format tidak didukung nih. pastikan format gambar jpge, png, jpg, atau webp');
+            const img = await message.downloadMedia();
+
+            fs.writeFileSync('test.mp4', img.data)
+
+
+            if (message.type == 'video') {
+                return message.reply(new MessageMedia("image/png", img.data, img.filename), message.from, {
+                    sendVideoAsGif: true,
+                    sendMediaAsSticker: true,
+                    stickerAuthor: "@ion/iqbalbtr",
+                    stickerName: img.filename?.split(".").slice(-1).toString() || 'sticker'
+                })
             }
 
             if (base64ToImage(img.data).length >= 5 * 1024 * 1024) {
                 return message.reply("Ukuran gambarnya terlalu besar")
             }
 
+            if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(img.mimetype)) {
+                return message.reply('Waduh format tidak didukung nih. pastikan format gambar jpge, png, jpg, atau webp');
+            }
 
-            const formatToWebp = await sharp(base64ToImage(img.data)).resize({
-                width: 256,
-                height: 256,
-                fit: "contain"
-            }).toFormat("webp", {
-                quality: 85
-            }).toBuffer();
+            const metadata = await sharp(base64ToImage(img.data)).metadata();
+            const maxSize = Math.max(metadata.width!, metadata.height!);
 
-            const media = new MessageMedia("image/webp", formatToWebp.toString('base64'), img.filename)
+            const resizedImage = await sharp(base64ToImage(img.data))
+                .resize({
+                    width: metadata.width! >= metadata.height! ? 256 : undefined,
+                    height: metadata.height! > metadata.width! ? 256 : undefined,
+                    fit: 'contain'
+                })
+                .toFormat('webp', {
+                    quality: 85
+                })
+                .extend({
+                    top: metadata.height! < metadata.width! ? Math.round(256 - metadata.height! * (256 / maxSize)) / 2 : 0,
+                    bottom: metadata.height! < metadata.width! ? Math.round(256 - metadata.height! * (256 / maxSize)) / 2 : 0,
+                    left: metadata.width! < metadata.height! ? Math.round(256 - metadata.width! * (256 / maxSize)) / 2 : 0,
+                    right: metadata.width! < metadata.height! ? Math.round(256 - metadata.width! * (256 / maxSize)) / 2 : 0,
+                    background: { r: 0, g: 0, b: 0, alpha: 0 }
+                })
+                .toBuffer();
+
+            const media = new MessageMedia("image/webp", resizedImage.toString('base64'), img.filename)
 
             message.reply(media, message.from, {
                 sendMediaAsSticker: true,
                 stickerAuthor: "@ion/iqbalbtr",
-                stickerName: img.filename?.split(".").slice(-1).toString() || 'sticker'
+                stickerName: name
             })
         } catch (error) {
-            console.error(error);
             message.reply('Terjadi kesalahan saat mengkonversi gambar')
         }
     }

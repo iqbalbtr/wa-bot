@@ -1,25 +1,54 @@
 import client from "../bot/bot";
+import { extractUserNumber, messageAutoReply } from "../lib/util";
 import { limiterMiddleware, removeLimiterUser } from "../middleware/limiter";
+import { handleSessionCommand, sessionHandler } from "../lib/session";
+
 
 client.on('message', async (msg) => {
 
-    const prefix = msg.body.split(process.env.PREFIX!)[1];
-    
-    if (msg.from.endsWith("@c.us")) {
-        
-        const command = client.commands?.get(prefix);
-        
-        if (command)
-            await limiterMiddleware(client, msg, () => command.execute(msg, client));
+    // check user session
+    const userInSession = client.session.users.get(extractUserNumber(msg))
+
+    if (userInSession) {
+
+        // Handle user session
+        await limiterMiddleware(client, msg, () => {
+            const handler = sessionHandler(msg, userInSession, client)
+            if(handler){                
+                const command = msg.body.trim().split(' ')[0]
+                return handleSessionCommand(command, userInSession.session.commands || [])
+                ?.execute(msg, client, userInSession.data)
+            } 
+        })
+
     } else {
 
-        const command = client.commands?.get(prefix);
+        const prefix = msg.body.split(" ")[0].split(process.env.PREFIX!)[1];
 
-        if (msg.mentionedIds.includes(client.info.wid._serialized as any)) {
-            if (command)
+        // if user from private message
+        if (msg.from.endsWith("@c.us")) {
+
+            const command = client.commands?.get(prefix);
+
+            if (command) {
                 await limiterMiddleware(client, msg, () => command.execute(msg, client));
+            } else {
+                await limiterMiddleware(client, msg, () => messageAutoReply(msg, client));
+            }
+        } else {
+
+            // if user from group message
+            if (msg.mentionedIds.includes(client.info.wid._serialized as any)) {
+                const command = client.commands?.get(prefix);
+                if (command) {
+                    await limiterMiddleware(client, msg, () => command.execute(msg, client));
+                } else {
+                    await limiterMiddleware(client, msg, () => messageAutoReply(msg, client));
+                }
+            }
         }
     }
+
 
     removeLimiterUser(client, msg)
 })

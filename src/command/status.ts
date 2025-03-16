@@ -1,17 +1,14 @@
 import { Message } from "whatsapp-web.js";
 import { ClientType } from "../types/client";
 import * as os from "os"
-import { removeLimiterUser } from "../middleware/limiter";
 
-function getTimeFormat(from : number) {
+function getTimeFormat(from: number) {
     const uptimeMilliseconds = Date.now() - from;
     const uptimeSeconds = Math.floor(uptimeMilliseconds / 1000);
     const uptimeMinutes = Math.floor(uptimeSeconds / 60);
     const uptimeHours = Math.floor(uptimeMinutes / 60);
     const uptimeDays = Math.floor(uptimeHours / 24);
-
     const uptimeFormatted = `${uptimeDays} hari, ${uptimeHours % 24} jam, ${uptimeMinutes % 60} menit`;
-
     return uptimeFormatted
 }
 
@@ -40,7 +37,7 @@ module.exports = {
             const cpuUsagePercentage = ((totalCpuTime - idleCpuTime) / totalCpuTime) * 100;
 
             let content = ""
-            console.clear();
+
             content += `- CPU Usage: ${cpuUsagePercentage.toFixed(2)}%`;
             content += `\n- Memory Usage: ${memoryUsage.toFixed(2)}% (${(usedMem / 1024 / 1024).toFixed(2)} MB dari ${(totalMem / 1024 / 1024).toFixed(2)} MB)`;
             content += `\n- Uptime bot: ${getTimeFormat(client.limiter.startTime)}`;
@@ -50,6 +47,6 @@ module.exports = {
             message.reply(content);
         } catch (error) {
 
-        } 
+        }
     }
 }

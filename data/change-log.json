@@ -1,0 +1,15 @@
+[
+    {
+        "date": "17 Maret 2025",
+        "changes" : [
+            "Memperbaiki transparasi stiker",
+            "Menambahkan command img to text",
+            "Meningkatkan kemampuan interaksi",
+            "Menambahkan downloader",
+            "Menambahkan command masukan",
+            "Refactor code logic",
+            "Implementasi sesi pesan",
+            "Menambah tutorial membuat command di docs"
+        ]
+    }
+]
