@@ -18,7 +18,7 @@ module.exports = {
 
         try {
 
-            const name = extractMessageFromCommand(message.body) || "sticker";
+            const name = message.body.split(" ").slice(1).join(" ") || "sticker";
 
             if (!message.hasMedia) {
                 return message.reply("Pastikan gambar dikirim bersama pesannya");
@@ -59,10 +59,10 @@ module.exports = {
                     quality: 85
                 })
                 .extend({
-                    top: metadata.height! < metadata.width! ? Math.round(256 - metadata.height! * (256 / maxSize)) / 2 : 0,
-                    bottom: metadata.height! < metadata.width! ? Math.round(256 - metadata.height! * (256 / maxSize)) / 2 : 0,
-                    left: metadata.width! < metadata.height! ? Math.round(256 - metadata.width! * (256 / maxSize)) / 2 : 0,
-                    right: metadata.width! < metadata.height! ? Math.round(256 - metadata.width! * (256 / maxSize)) / 2 : 0,
+                    top: Math.max(0, Math.floor((256 - (metadata.height! * 256 / maxSize)) / 2)),
+                    bottom: Math.max(0, Math.floor((256 - (metadata.height! * 256 / maxSize)) / 2)),
+                    left: Math.max(0, Math.floor((256 - (metadata.width! * 256 / maxSize)) / 2)),
+                    right: Math.max(0, Math.floor((256 - (metadata.width! * 256 / maxSize)) / 2)),
                     background: { r: 0, g: 0, b: 0, alpha: 0 }
                 })
                 .toBuffer();
@@ -71,10 +71,12 @@ module.exports = {
 
             message.reply(media, message.from, {
                 sendMediaAsSticker: true,
-                stickerAuthor: "@ion/iqbalbtr",
+                stickerAuthor: "@mcc/sticker",
                 stickerName: name
             })
         } catch (error) {
+            console.log(error);
+
             message.reply('Terjadi kesalahan saat mengkonversi gambar')
         }
     }
