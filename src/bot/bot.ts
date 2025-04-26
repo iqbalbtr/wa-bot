@@ -5,10 +5,14 @@ import 'dotenv/config'
 
 const client = new Client({
     puppeteer: {
+        headless: true, 
         args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox'
-        ],
+            "--no-sandbox", 
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage", 
+            "--disable-gpu", 
+            "--single-process"
+        ]
     },
     authStrategy: new LocalAuth(),
 }) as ClientType;
@@ -33,3 +37,11 @@ export default client;
 
 initializeComands();
 initializeEvents();
+
+export function restartApp(){
+    client.destroy()
+    .then(() => {
+        console.log("restarting");
+        client.initialize()
+    })
+}
