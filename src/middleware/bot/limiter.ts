@@ -1,16 +1,18 @@
 import { Message } from "whatsapp-web.js";
-import { ClientType } from "../types/client";
+import { ClientContextType, ClientType } from "../../types/client";
 
 export function removeLimiterUser(client: ClientType, message: Message) {
     const userId = message.from.endsWith("@c.us") ? message.from : message.author
-        client.limiter.users.delete(userId!);
+    client.limiter.users.delete(userId!);
 }
 
 export function limiterMiddleware(
-    client: ClientType,
-    message: Message,
+    context: ClientContextType<Message>,
     next: () => void
 ) {
+
+    const { client, params: message } = context;
+
     return new Promise((resolve) => {
 
         const now = Date.now();
@@ -23,7 +25,6 @@ export function limiterMiddleware(
         client.limiter.users.set(userId!, now);
 
         client.limiter.userTotal += 1
-
         resolve(next())
     })
 }

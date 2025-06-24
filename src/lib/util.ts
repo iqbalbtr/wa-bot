@@ -1,9 +1,10 @@
 import didyoumean from "didyoumean";
 import path, { join } from "path";
 import fs, { mkdirSync, writeFileSync } from "fs"
-import client from "../bot/bot";
-import { ClientType } from "../types/client";
+import client from "../app/bot";
+import { ClientContextType, ClientMiddlewareType, ClientType } from "../types/client";
 import { Message } from "whatsapp-web.js";
+import { spawn } from "child_process"
 
 export function initializeEvents() {
     const eventsPath = path.join(path.resolve(__dirname, "../"), "event");
@@ -15,6 +16,9 @@ export function initializeEvents() {
     })
 }
 
+export function getUserIdFromMessage(message: Message): string {
+    return message.from.endsWith("@c.us") ? message.from : message.author!
+}
 
 function readFilesRecursively(dir: string): string[] {
     let results: string[] = [];
@@ -44,7 +48,7 @@ export function initializeComands() {
     }
 }
 
-export function saveFileToTemp(data: string | NodeJS.ArrayBufferView, output: string[], ext: string) {
+export function saveFileToTemp(data: string | NodeJS.ArrayBufferView, output: string[], ext: string, cb?: (isDelete: () => void) => void) {
 
     const outputFolder = join('temp', ...output, Date.now().toString());
 
@@ -54,11 +58,24 @@ export function saveFileToTemp(data: string | NodeJS.ArrayBufferView, output: st
 
     writeFileSync(path.join(outputFolder, filename), data)
 
-    return {
+    const result = {
         outputFolder,
         filename,
         outputFolderFile: path.join(outputFolder, filename)
     }
+
+    function deleteFile() {
+        try {
+            fs.unlinkSync(result.outputFolderFile);
+            fs.rmdirSync(outputFolder, { recursive: true });
+        } catch (error) {
+            console.error("Error deleting file:", error);
+        }
+    }
+
+    cb && cb(deleteFile)
+
+    return  result
 }
 
 export function extractMessageFromCommand(body: string) {
@@ -87,4 +104,60 @@ export function messageAutoReply(message: Message, client: ClientType) {
 
 export function extractUserNumber(message: Message): string {
     return message.from.endsWith("@c.us") ? message.from : message.author!
+}
+
+export async function middlewareApplier(
+    context: ClientContextType<any>,
+    middlewares: ClientMiddlewareType[],
+    finalFn: () => void
+) {
+
+    let index = -1;
+
+    async function next(i: number) {
+
+        if (i <= index)
+            throw new Error("next() called multiple times");
+
+        index = i;
+
+        if (i == middlewares.length) {
+            return finalFn()
+        }
+
+        const middleware = middlewares[i];
+
+        if (middleware) {
+            await middleware(context, () => next(i + 1));
+        }
+    }
+
+    await next(0);
+
+}
+
+export async function childProcessCallback(cmd: string, ...args: string[]): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+        const process = spawn(cmd, args);
+
+        let output: string[] = [];
+
+        process.stdout.on('data', data => {
+            output.push(data.toString());
+        });
+
+        process.stderr.on("data", (data) => {
+            console.log(`stderr: ${data}`);
+        });
+
+        process.on('exit', code => {
+            console.log(`Process ended with ${code}`);
+            resolve(output);
+        });
+
+        process.on('error', (error) => {
+            console.error(`Error: ${error}`);
+            reject(error);
+        });
+    });
 }

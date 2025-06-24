@@ -29,5 +29,13 @@ export interface ClientType extends Client {
     },
     session: {
         users: Map<string, SessionUserType>
-    }
-} 
+    },
+    isLoggedIn: boolean = false
+}
+
+export type ClientContextType<T> = {
+    client: ClientType,
+    params: T
+}
+
+export type ClientMiddlewareType = (context: ClientContextType, next: () => void) => any

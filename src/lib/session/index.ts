@@ -1,8 +1,8 @@
 import { Message } from "whatsapp-web.js";
-import client from "../bot/bot";
-import { extractUserNumber } from "./util";
-import { ClientType, CommandSessionContentType, SessionUserType } from "../types/client";
-import { prefix } from "../constant/env";
+import client from "../../app/bot";
+import { extractUserNumber } from "../util";
+import { ClientType, CommandSessionContentType, SessionUserType } from "../../types/client";
+import { prefix } from "../../constant/env";
 
 export function sessionHandler(msg: Message, session: SessionUserType, client: ClientType) {
 

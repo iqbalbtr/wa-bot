@@ -1,5 +1,16 @@
-import client, { restartApp } from "./bot/bot";
+import app from "./app/api";
+import { port } from "./constant/env";
+import client from "./app/bot";
+import "dotenv/config"
 
-client.initialize()
+app.listen({
+    port: +port,
+}, (err) => {
+    if (err) {
+        console.error(err);
+        process.exit(1)
+    }
+    console.log(`Server is running on port ${port}`);
+})
 
-setInterval(restartApp, 30 * 1000)
+// client.initialize()

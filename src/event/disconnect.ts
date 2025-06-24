@@ -1,6 +1,6 @@
-import client, { restartApp } from "../bot/bot";
+import client from "../app/bot";
 
 client.on('disconnected', () => {
     console.log("Bot disconected");
-    restartApp()
+    client.isLoggedIn = false;
 })

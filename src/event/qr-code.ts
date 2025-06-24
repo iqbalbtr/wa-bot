@@ -1,4 +1,4 @@
-import client from "../bot/bot";
+import client from "../app/bot";
 import * as qrcode from "qrcode-terminal";
 
 client.on('qr', e => {

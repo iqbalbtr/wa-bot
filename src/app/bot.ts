@@ -8,27 +8,24 @@ const client = new Client({
         headless: true, 
         args: [
             "--no-sandbox", 
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage", 
-            "--disable-gpu", 
-            "--single-process"
+            "--disable-setuid-sandbox"
         ]
     },
     authStrategy: new LocalAuth(),
 }) as ClientType;
 
-// registering command
+// Menambahkan instance command BOT kedalam client
 client.commands = new Map<string, CommandType>();
 
-// registering limiter
+// Memasukan nilai limiter dari middleware kedalam client
 client.limiter = {
-    max: +process.env.MAX_PROCESS! as number,
+    max: +process.env.MAX_PROCESS! || 5 as number,
     users: new Map(),
     userTotal: 0,
     startTime: Date.now()
 }
 
-// registering session
+// Menambahkan instance sesi untuk mengatur pengguna kedalam client
 client.session = {
     users: new Map<string, SessionUserType>()
 }
@@ -37,11 +34,3 @@ export default client;
 
 initializeComands();
 initializeEvents();
-
-export function restartApp(){
-    client.destroy()
-    .then(() => {
-        console.log("restarting");
-        client.initialize()
-    })
-}

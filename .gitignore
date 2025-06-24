@@ -7,3 +7,11 @@ pnpm-lock.yaml
 
 temp
 .env
+
+.wwebjs_auth
+.wwebjs_cache
+
+temp
+
+src/database/migrations
+/src/database/main.db
