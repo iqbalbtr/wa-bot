@@ -1,7 +1,7 @@
 import "dotenv/config"
 import fs from "fs"
 import path from "path"
-import { databaseUrl } from "../constant/env"
+import { databaseUrl } from "../shared/constant/env"
 
 async function main(){
     const pathDb = path.join(path.resolve(), databaseUrl)    

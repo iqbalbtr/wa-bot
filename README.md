@@ -158,13 +158,9 @@ export interface ClientType extends Client {
 ---
 
 ## Best Practices
-✅ **Gunakan sesi dengan bijak**: Jangan simpan terlalu banyak data di dalam sesi untuk menghindari memory leak.
-✅ **Pisahkan fungsi utama dan utilitas**: Simpan helper functions dalam `lib/` agar kode lebih modular.
-✅ **Gunakan TypeScript dengan baik**: Pastikan semua fungsi memiliki tipe data yang sesuai agar lebih aman dan maintainable.
-✅ **Log setiap error**: Pastikan setiap catch block memiliki `console.log(error)` agar memudahkan debugging.
-✅ **Bersihkan sesi setelah digunakan**: Gunakan `deleteSessionUser(message)` setelah sesi tidak dibutuhkan.
-
----
-
-Dokumentasi ini telah diperbarui agar lebih detail dan mudah dipahami. Jika ada bagian yang masih kurang jelas atau perlu diperbaiki, silakan beri masukan! 🚀
+- **Gunakan sesi dengan bijak**: Jangan simpan terlalu banyak data di dalam sesi untuk menghindari memory leak.
+- **Pisahkan fungsi utama dan utilitas**: Simpan helper functions dalam `lib/` agar kode lebih modular.
+-  **Gunakan TypeScript dengan baik**: Pastikan semua fungsi memiliki tipe data yang sesuai agar lebih aman dan maintainable.
+-  **Log setiap error**: Pastikan setiap catch block memiliki `console.log(error)` agar memudahkan debugging.
+-  **Bersihkan sesi setelah digunakan**: Gunakan `deleteSessionUser(message)` setelah sesi tidak dibutuhkan.
 

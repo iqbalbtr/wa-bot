@@ -1,16 +1,17 @@
-import app from "./app/api";
-import { port } from "./constant/env";
-import client from "./app/bot";
+import { port } from "./shared/constant/env";
+import client from "./bot";
 import "dotenv/config"
+import { serve } from '@hono/node-server'
+import api from "./api";
 
-app.listen({
-    port: +port,
-}, (err) => {
-    if (err) {
-        console.error(err);
-        process.exit(1)
-    }
-    console.log(`Server is running on port ${port}`);
+serve({
+  fetch: api.fetch,
+  port: +port,
+}, async (e) => {
+
+  console.log("server is running at", e.port)
+
+  // Initialize the bot client
+  console.log("starting bot");
+  await client.initialize()
 })
-
-// client.initialize()
