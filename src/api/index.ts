@@ -6,6 +6,7 @@ import messageRoute from "./handler/message";
 import blockHandler from "./handler/block";
 import uploadHandler from "./handler/upload";
 import { HTTPException } from "hono/http-exception";
+import dashboardHandler from "./handler/dashboard";
 
 /**
  * 
@@ -20,6 +21,7 @@ api.route("/contacts", contactHandler);
 api.route("/schedules", scheduleHandler);
 api.route("/blocks", blockHandler);
 api.route("/upload", uploadHandler);
+api.route("/dashboard", dashboardHandler);
 
 api.onError((err, c) => {
     

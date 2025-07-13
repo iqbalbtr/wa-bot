@@ -12,9 +12,6 @@ client.on('message', async (msg) => {
 
     const userInSession = client.session.users.get(extractUserNumber(msg));
 
-    if(msg.from !== devId)
-        return
-
     /**
      * Inisialisasi middleware untuk memfilter pesan yang masuk
      */
@@ -44,7 +41,7 @@ client.on('message', async (msg) => {
 async function handleSessionUser(msg: Message, userInSession: SessionUserType) {
 
     const isPrivateMessage = msg.from.endsWith("@c.us");
-    const isGroupMessage = msg.mentionedIds.includes(client.info.wid);
+    const isGroupMessage = msg.mentionedIds.includes(client.info.wid._serialized);
 
     if (isPrivateMessage || isGroupMessage) {
 
@@ -73,7 +70,7 @@ async function handleNormalUser(msg: Message) {
      * Melakukan validasi apakah pesan yang masuk dari private chat atau group chat
      */
     const isPrivateMessage = msg.from.endsWith("@c.us");
-    const isGroupMessage = msg.mentionedIds.map(fo => fo._serialized).includes(client.info.wid._serialized);
+    const isGroupMessage = msg.mentionedIds.includes(client.info.wid._serialized);
 
     if (isPrivateMessage) {
         const command = getCommandFromPrefix(msg.body);
