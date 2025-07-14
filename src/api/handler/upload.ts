@@ -37,7 +37,11 @@ uploadHandler.post("/",
             }
         })
 
-        return c.json(successResponse("success store file", result))
+        return c.json(successResponse("success store file", {
+            output_path: result.outputFolder,
+            output_file: result.outputFolderFile,
+            filename: result.filename
+        }))
     })
 
 export default uploadHandler
