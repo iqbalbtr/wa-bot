@@ -26,12 +26,13 @@ api.route("/dashboard", dashboardHandler);
 api.onError((err, c) => {
     
     if(err instanceof HTTPException) {
-
+        const zodError = (err as any).cause.issues;
+        
         return c.json({
             status: false,
             message: err.message ?? "An error occurred",
-            ...(err.getResponse() && {
-                error: err.getResponse()
+            ...(zodError&& {
+                error: zodError
             })
         }, err.status);
     } else {

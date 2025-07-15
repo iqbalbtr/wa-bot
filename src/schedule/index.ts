@@ -23,7 +23,7 @@ async function loadAndStartSchedules() {
             const job = new CronJob(schedule.scheduled_time, async () => {
 
                 if (client.isLoggedIn) {
-                    for (const target of schedule.contact_ids) {
+                    for (const target of JSON.parse(schedule.contact_ids)) {
                         try {
 
                             const media = schedule.attachment ? MessageMedia.fromFilePath(schedule.attachment) : undefined;
@@ -51,22 +51,12 @@ async function loadAndStartSchedules() {
 }
 
 
-const dailyRefreshJob = new CronJob("0 0 * * *", async () => {
+const dailyRefreshJob = new CronJob("0 0 0 * * *", async () => {
     console.log("[Scheduler] Refreshing schedules...");
 
     stopAllSchedules();
     await loadAndStartSchedules();
 });
-
-export async function refreshSchedules() {
-    console.log("[Scheduler] Manual refresh triggered");
-
-    dailyRefreshJob.stop();
-    stopAllSchedules();
-
-    await loadAndStartSchedules();
-    dailyRefreshJob.start();
-}
 
 export default async function initializeSchedules() {
     await loadAndStartSchedules();
