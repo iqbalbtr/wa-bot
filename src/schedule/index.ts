@@ -1,7 +1,6 @@
 import db from "../database";
 import { schedules as scheduleTable } from "../database/schema";
 import { CronJob } from "cron";
-import { parseCronTime } from "../api/lib/cron";
 import { MessageMedia } from "whatsapp-web.js";
 import client from "../bot";
 
@@ -11,15 +10,14 @@ async function loadAndStartSchedules() {
     const scheduleData = await db.select().from(scheduleTable);
     console.log(`[Scheduler] Starting with ${scheduleData.length} tasks`);
 
-    const now = new Date()
     const newSchedules: CronJob[] = [];
 
     for (const schedule of scheduleData) {
 
-        const dateCron = parseCronTime(schedule.scheduled_time);
+        // const dateCron = parseCronTime(schedule.scheduled_time);
 
-        if (dateCron.month >= now.getMonth() + 1)
-            continue;
+        // if (dateCron.month >= now.getMonth() + 1)
+        //     continue;
 
         try {
             const job = new CronJob(schedule.scheduled_time, async () => {
