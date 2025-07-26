@@ -76,6 +76,43 @@ scheduleHandler.post('/',
         return ctx.json(successResponse("success create schedule", 201))
     })
 
+scheduleHandler.patch(
+    "/:scheduleId",
+    zValidator("json",
+        z.object({
+            message: z.string().min(1),
+            contact_ids: z.array(z.string()).min(1),
+            scheduled_time: z.string().min(1),
+            attachment: z.string().optional().nullable()
+        }), (res) => {
+            if (!res.success) {
+                throw new HTTPException(400, {
+                    message: "Bad Request",
+                    cause: res.error
+                })
+            }
+        }
+    ), async ctx => {
+
+        const body = ctx.req.valid('json')
+        const { scheduleId } = ctx.req.param()
+
+        const countExist = await db.select({ count: count() }).from(schedules)
+
+        const scheduleCount = countExist[0].count;
+
+        if (scheduleCount === 0) {
+            throw new HTTPException(404, { message: "Schedule not found" });
+        }
+
+        await db.update(schedules).set({
+            ...body,
+            contact_ids: JSON.stringify(body.contact_ids) ?? '',
+        }).where(eq(schedules.id, +scheduleId))
+
+        return ctx.json(successResponse("success delete schedule", 200))
+    })
+
 scheduleHandler.delete(
     "/:scheduleId",
     zValidator('param', z.object({
