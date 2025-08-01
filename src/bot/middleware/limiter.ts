@@ -1,13 +1,9 @@
-import { Message } from "whatsapp-web.js";
-import { ClientContextType, ClientType } from "../type/client";
-
-export function removeLimiterUser(client: ClientType, message: Message) {
-    const userId = message.from.endsWith("@c.us") ? message.from : message.author
-    client.limiter.users.delete(userId!);
-}
+import { proto } from "@whiskeysockets/baileys";
+import { Client, ClientContextType } from "../type/client";
+import { extractContactId } from "../lib/util";
 
 export function limiterMiddleware(
-    context: ClientContextType<Message>,
+    context: ClientContextType<proto.IWebMessageInfo>,
     next: () => void
 ) {
 
@@ -15,16 +11,18 @@ export function limiterMiddleware(
 
     return new Promise((resolve) => {
 
-        const now = Date.now();
-        const userId = message.from.endsWith("@c.us") ? message.from : message.author
+        const userId = extractContactId(message.key.remoteJid || "");
 
-        if (client.limiter.users.size >= client.limiter.max) {
-            resolve(message.reply("⚠️ Server sedang sibuk, coba lagi nanti!"));
+        if (client.limiter.isUserLimitReached()) {
+            resolve(() => client.getSession()?.sendMessage(
+                message.key.remoteJid!,
+                {
+                    text: "⚠️ Server sedang sibuk, coba lagi nanti!"
+                }
+            ));
         }
 
-        client.limiter.users.set(userId!, now);
-
-        client.limiter.userTotal += 1
+        client.limiter.addUser(userId);
         resolve(next())
     })
 }

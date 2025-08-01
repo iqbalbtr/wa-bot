@@ -1,11 +1,12 @@
-import { Message } from "whatsapp-web.js";
 import changelog from "../../../assets/change-log.json"
-import { CommandType } from "../type/client";
+import { Client, CommandType } from "../type/client";
 
-module.exports = {
+export default {
     name: "cl",
     description: "Deskripsi daftar perubahan yang terjadi",
-    execute: async (message: Message) => {
+    execute: async (msg, client) => {
+
+        const session = client.getSession()
 
         const lastChangeLog = changelog[changelog.length - 1]
 
@@ -15,6 +16,8 @@ module.exports = {
             content += `\n${++index}. ${change}`
         });
 
-        return message.reply(content)
+        await session?.sendMessage(msg.key.remoteJid!, {
+            text: content
+        });
     }
 } as CommandType

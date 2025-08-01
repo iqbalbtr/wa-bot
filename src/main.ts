@@ -4,14 +4,15 @@ import "dotenv/config"
 import { serve } from '@hono/node-server'
 import api from "./api";
 
-serve({
-  fetch: api.fetch,
-  port: +port,
-}, async (e) => {
+client.createSession()
+// serve({
+//   fetch: api.fetch,
+//   port: +port,
+// }, async (e) => {
 
-  console.log("server is running at", e.port)
+//   console.log("server is running at", e.port)
 
-  // Initialize the bot client
-  console.log("starting bot");
-  await client.initialize()
-})
+//   // Initialize the bot client
+//   console.log("starting bot");
+//   await client.initialize()
+// })

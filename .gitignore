@@ -15,3 +15,5 @@ temp
 
 src/database/migrations
 /src/database/main.db
+
+.wa-auth

@@ -1,16 +1,26 @@
-import { Client, Message } from "whatsapp-web.js";
+import { BaileysEventMap, proto } from "@whiskeysockets/baileys";
+import { WhatsappClient } from "../client/whatsaap";
+
+export type Client = WhatsappClient
+
+export type ClientEvent = {
+  [K in keyof BaileysEventMap]: {
+    event: K;
+    listener: (payload: BaileysEventMap[K], session: Client) => void;
+  };
+}[keyof BaileysEventMap];
 
 export type CommandSessionContentType = {
     name: string;
     description: string;
-    execute: (message: Message, client: ClientType, data: object | any,) => void
+    execute: (message: proto.IWebMessageInfo, client: Client, data: object | any,) => void
 }
 
 export type CommandType = {
     name: string;
     description: string;
     usage?: string;
-    execute: (message: Message, client: ClientType) => void,
+    execute: (message: proto.IWebMessageInfo, client: Client) => void,
     commands?: CommandSessionContentType[]
 }
 
@@ -19,22 +29,8 @@ export type SessionUserType = {
     data: object | any,
 }
 
-export interface ClientType extends Client {
-    commands: Map<string, CommandType>,
-    limiter: {
-        max: number;
-        users: Map<string, number>;
-        userTotal: number;
-        startTime: number
-    },
-    session: {
-        users: Map<string, SessionUserType>
-    },
-    isLoggedIn: boolean
-}
-
 export type ClientContextType<T> = {
-    client: ClientType,
+    client: Client,
     params: T
 }
 

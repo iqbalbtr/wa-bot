@@ -1,63 +1,77 @@
-import { Message } from "whatsapp-web.js";
+import { proto } from "@whiskeysockets/baileys";
 import client from "../..";
 import { prefix } from "../../../shared/constant/env";
-import { ClientType, CommandSessionContentType, SessionUserType } from "../../type/client";
-import { extractUserNumber } from "../util";
+import { Client, CommandSessionContentType, SessionUserType } from "../../type/client";
+import { extractContactId } from "../util";
 
-export function sessionHandler(msg: Message, session: SessionUserType, client: ClientType) {
+export function sessionHandler(msg: proto.IWebMessageInfo, session: SessionUserType, client: Client) {
 
-    const command  = msg.body.split(" ")[0]
+    const clientSession = client.getSession();
+    const command = msg.message?.conversation?.split(" ")[0]
     const commands = session.session.commands || []
 
-    if (command.toLowerCase() !== '/exit' && !commands.map(fo => fo.name).includes(command)) {
+    if (command?.toLowerCase() !== '/exit' && !commands.map(fo => fo.name).includes(command || "")) {
 
         const content = generateSessionFooterContent(session.session.name)
 
-        msg.reply(content)
-
+        clientSession?.sendMessage((msg.key.remoteJid || ""), {
+            text: content
+        }, {
+            quoted: msg
+        });
         return false
     }
 
-    if (command.toLowerCase() == '/exit') {
-        client.session.users.delete(extractUserNumber(msg));
-        msg.reply(`Anda keluar dari sesi gunakan *\`${prefix}help\`* untuk melihat daftar perintah`)
+    if (command && command.toLowerCase() == '/exit') {
+        client.userActiveSession.removeUserSession(extractContactId(msg.key.remoteJid || ""));
+        clientSession?.sendMessage((msg.key.remoteJid || ""), {
+            text: `Sesi ${session.session.name} telah diakhiri.`
+        }, {
+            quoted: msg
+        });
         return false
     }
 
     return true
 }
 
-export function createSessionUser(message: Message, sessionName: string, data?: object) {
+export function createSessionUser(message: proto.IWebMessageInfo, sessionName: string, data?: object) {
 
-    const user = extractUserNumber(message);
+    const clientSession = client.getSession();
 
-    const session = client.commands.get(sessionName);
+    const user = extractContactId(message.key.remoteJid || "");
+
+    const session = client.command.getCommand(sessionName);
 
     if (!session)
-        return message.reply("Maaf terjadi kesalah tidak dikenali")
+        return clientSession?.sendMessage(message.key.remoteJid || "" , {
+            text: "Maaf terjadi kesalahan tidak dikenali"
+        }, {
+            quoted: message
+        });
 
-    return client.session.users.set(user, {
+    return client.userActiveSession.addUserSession(user, {
         session,
         data: data || {}
     })
 }
 
-export function deleteSessionUser(message: Message) {
+// export function deleteSessionUser(message: proto.IWebMessageInfo) {
 
-    const user = extractUserNumber(message);
+//     const user = extractUserNumber(message);
 
-    const session = client.session.users.get(user);
+//     const session = client.session.users.get(user);
 
-    if (!session)
-        return message.reply("Maaf terjadi kesalah tidak dikenali")
+//     if (!session)
+//         return message.reply("Maaf terjadi kesalah tidak dikenali")
 
-    return client.session.users.delete(user)
-}
+//     return client.session.users.delete(user)
+// }
 
 export function generateSessionFooterContent(name: string) {
-    const session = client.commands.get(name);
+    const session = client.command.getCommand(name);
 
-    if(!session?.commands){
+    if (!session?.commands) {
         return ''
     }
 
@@ -71,10 +85,10 @@ export function generateSessionFooterContent(name: string) {
     return content
 }
 
-export function handleSessionCommand(command: string, sessions: CommandSessionContentType[]){
-    
-    const commandIsExist = sessions.find((fo) =>  fo.name == command);
+export function handleSessionCommand(command: string, sessions: CommandSessionContentType[]) {
 
-    if(commandIsExist) return commandIsExist
+    const commandIsExist = sessions.find((fo) => fo.name == command);
+
+    if (commandIsExist) return commandIsExist
 
 }
