@@ -4,6 +4,7 @@ export class ClientLimiter {
     private users: Map<string, number> = new Map();
     private max: number = 10;
     private userTotal: number = 0;
+    private countRquest: number = 0;
 
     constructor(private client: Client, maxUsers?: number) {
         if (maxUsers && maxUsers > 0) {
@@ -15,6 +16,7 @@ export class ClientLimiter {
         const now = Date.now();
         this.users.set(userId, now);
         this.userTotal += 1;
+        this.countRquest += 1;
     }
 
     public removeUser(userId: string): void {
@@ -27,5 +29,9 @@ export class ClientLimiter {
 
     public getUserCount(): number {
         return this.users.size;
+    }
+
+    public getCountRequest(): number {
+        return this.countRquest;
     }
 }

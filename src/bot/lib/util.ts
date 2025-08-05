@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs"
 import client from "../../bot";
 import { ClientContextType, ClientMiddlewareType } from "../type/client";
+import { proto } from "@whiskeysockets/baileys";
 
 export function extractMessageFromCommand(body: string) {
     return body.split(" ")[1]
@@ -42,9 +43,38 @@ export async function middlewareApplier(
 }
 
 export function extractCommandFromPrefix(body: string) {
+
     const prefix = client.getPrefix();
+    console.log(body.split(prefix), body.startsWith(prefix), prefix, body);
+
     if (body.startsWith(prefix)) {
-        return body.slice(prefix.length).trim().split(" ")[0];
+        return body.split(prefix)[1].split(" ")[0].toLowerCase();
     }
     return null;
+}
+
+export function extractMessageFromGroupMessage(text: string) {
+
+    let res = ""
+
+    text.split(" ").forEach((word, index) => {
+        if(!word.startsWith("@")) {
+            res += word + " ";
+        }
+    })
+
+    return res.trim();
+}
+
+export function normalizeMessage(message: proto.IWebMessageInfo) {
+
+    const payload = {
+        key: message.key,
+        message: message.message,
+        from: message.participant || extractContactId(message.key.remoteJid || ""),
+        remoteJid: message.key.remoteJid || "",
+        fromMe: message.key.fromMe || false,
+        timestamp: message.messageTimestamp || 0
+    }
+
 }

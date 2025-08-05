@@ -11,7 +11,10 @@ export function limiterMiddleware(
 
     return new Promise((resolve) => {
 
-        const userId = extractContactId(message.key.remoteJid || "");
+        const userId = message.key.remoteJid
+
+        if(!userId)
+            return
 
         if (client.limiter.isUserLimitReached()) {
             resolve(() => client.getSession()?.sendMessage(

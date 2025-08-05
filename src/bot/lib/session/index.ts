@@ -4,36 +4,36 @@ import { prefix } from "../../../shared/constant/env";
 import { Client, CommandSessionContentType, SessionUserType } from "../../type/client";
 import { extractContactId } from "../util";
 
-export function sessionHandler(msg: proto.IWebMessageInfo, session: SessionUserType, client: Client) {
+// export function sessionHandler(msg: proto.IWebMessageInfo, session: SessionUserType, client: Client) {
 
-    const clientSession = client.getSession();
-    const command = msg.message?.conversation?.split(" ")[0]
-    const commands = session.session.commands || []
+//     const clientSession = client.getSession();
+//     const command = msg.message?.conversation?.split(" ")[0]
+//     const commands = session.session.commands || []
 
-    if (command?.toLowerCase() !== '/exit' && !commands.map(fo => fo.name).includes(command || "")) {
+//     if (command?.toLowerCase() !== '/exit' && !commands.map(fo => fo.name).includes(command || "")) {
 
-        const content = generateSessionFooterContent(session.session.name)
+//         const content = generateSessionFooterContent(session.session.name)
 
-        clientSession?.sendMessage((msg.key.remoteJid || ""), {
-            text: content
-        }, {
-            quoted: msg
-        });
-        return false
-    }
+//         clientSession?.sendMessage((msg.key.remoteJid || ""), {
+//             text: content
+//         }, {
+//             quoted: msg
+//         });
+//         return false
+//     }
 
-    if (command && command.toLowerCase() == '/exit') {
-        client.userActiveSession.removeUserSession(extractContactId(msg.key.remoteJid || ""));
-        clientSession?.sendMessage((msg.key.remoteJid || ""), {
-            text: `Sesi ${session.session.name} telah diakhiri.`
-        }, {
-            quoted: msg
-        });
-        return false
-    }
+//     if (command && command.toLowerCase() == '/exit') {
+//         client.userActiveSession.removeUserSession(extractContactId(msg.key.remoteJid || ""));
+//         clientSession?.sendMessage((msg.key.remoteJid || ""), {
+//             text: `Sesi ${session.session.name} telah diakhiri.`
+//         }, {
+//             quoted: msg
+//         });
+//         return false
+//     }
 
-    return true
-}
+//     return true
+// }
 
 export function createSessionUser(message: proto.IWebMessageInfo, sessionName: string, data?: object) {
 
