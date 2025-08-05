@@ -1,5 +1,5 @@
 import { prefix } from "../../shared/constant/env"
-import { createSessionUser, generateSessionFooterContent } from "../lib/session";
+import { generateSessionFooterContent } from "../lib/session";
 import { extractContactId } from "../lib/util";
 import { Client, CommandType } from "../type/client";
 // import { ClientType, CommandType } from "../type/client";
@@ -23,7 +23,7 @@ export default {
 
         content += generateSessionFooterContent('help')
 
-        createSessionUser(message, 'help', { page })
+        client.userActiveSession.addUserSession(message, 'help', { page })
         session?.sendMessage((message.key.remoteJid || ""), {
             text: content
         }, {
@@ -54,7 +54,7 @@ export default {
                 let content = getDataHelpWithPagination(client, ++page, limit, totalPage);
                 content += generateSessionFooterContent('help')
 
-                createSessionUser(message, 'help', { page })
+                client.userActiveSession.addUserSession(message, 'help', { page })
                 return session?.sendMessage((message.key.remoteJid || ""), {
                     text: content
                 }, {
@@ -85,7 +85,7 @@ export default {
                 let content = getDataHelpWithPagination(client, --page, limit, totalPage);
                 content += generateSessionFooterContent('help')
 
-                createSessionUser(message, 'help', { page })
+                client.userActiveSession.addUserSession(message, 'help', { page })
                 return session?.sendMessage((message.key.remoteJid || ""), {
                     text: content
                 }, {

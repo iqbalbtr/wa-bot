@@ -35,26 +35,26 @@ import { extractContactId } from "../util";
 //     return true
 // }
 
-export function createSessionUser(message: proto.IWebMessageInfo, sessionName: string, data?: object) {
+// export function createSessionUser(message: proto.IWebMessageInfo, sessionName: string, data?: object) {
 
-    const clientSession = client.getSession();
+//     const clientSession = client.getSession();
 
-    const user = extractContactId(message.key.remoteJid || "");
+//     const user = extractContactId(message.key.remoteJid || "");
 
-    const session = client.command.getCommand(sessionName);
+//     const session = client.command.getCommand(sessionName);
 
-    if (!session)
-        return clientSession?.sendMessage(message.key.remoteJid || "" , {
-            text: "Maaf terjadi kesalahan tidak dikenali"
-        }, {
-            quoted: message
-        });
+//     if (!session)
+//         return clientSession?.sendMessage(message.key.remoteJid || "" , {
+//             text: "Maaf terjadi kesalahan tidak dikenali"
+//         }, {
+//             quoted: message
+//         });
 
-    return client.userActiveSession.addUserSession(user, {
-        session,
-        data: data || {}
-    })
-}
+//     return client.userActiveSession.addUserSession(user, {
+//         session,
+//         data: data || {}
+//     })
+// }
 
 // export function deleteSessionUser(message: proto.IWebMessageInfo) {
 

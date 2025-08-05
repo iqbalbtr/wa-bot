@@ -2,20 +2,15 @@ import { BaileysEventMap, proto } from "@whiskeysockets/baileys";
 import { Client, CommandSessionContentType, CommandType, SessionUserType } from "../type/client";
 import path from "path";
 import fs from "fs";
-import { extractCommandFromPrefix, extractContactId, middlewareApplier } from "../lib/util";
+import { extractCommandFromPrefix, extractContactId, extractMessageFromGroupMessage, middlewareApplier } from "../lib/util";
 import logger from "../../shared/lib/logger";
 import { blockUserMiddleware } from "../middleware/block-user";
 import { limiterMiddleware } from "../middleware/limiter";
 
-/**
- * Mengelola, memuat, dan mengeksekusi semua command untuk client Baileys.
- */
 export class ClientCommand {
     private commands: Map<string, CommandType> = new Map<string, CommandType>();
 
     constructor(private client: Client) { }
-
-    // --- Metode Publik untuk Manajemen Command ---
 
     public addCommand(command: CommandType): void {
         this.commands.set(command.name, command);
@@ -32,19 +27,12 @@ export class ClientCommand {
     public getCommandCount(): number {
         return this.commands.size;
     }
-    // --- Inisialisasi dan Event Handler Utama ---
 
-    /**
-     * Memuat semua file command dari direktori dan mendaftarkan event handler utama.
-     */
     public async initialize() {
         await this.loadCommandsFromDirectory();
-        this.client.getSession()?.ev.on("messages.upsert", this.onMessagesUpsert.bind(this));
     }
 
-    /**
-     * Memuat command dari file secara dinamis.
-     */
+
     private async loadCommandsFromDirectory() {
         const commandPath = path.resolve(process.cwd(), 'src', 'bot', 'command');
         try {
@@ -63,22 +51,19 @@ export class ClientCommand {
         }
     }
 
-    /**
-     * Handler utama yang dipicu setiap kali ada pesan masuk.
-     * @param data Data event 'messages.upsert' dari Baileys.
-     */
-    private async onMessagesUpsert(data: BaileysEventMap["messages.upsert"]): Promise<void> {
+
+    public async handleCommandEvent(data: BaileysEventMap["messages.upsert"]): Promise<void> {
         const msg = data.messages[0];
 
-        // Guard clause untuk mengabaikan pesan yang tidak relevan
         if (msg.key.fromMe || !msg.message || !msg.key.remoteJid) {
             return;
         }
 
-        const from = extractContactId(msg.key.remoteJid);
-        const text = this.getMessageText(msg);
+        msg.message = { ...msg.message, ...this.parseMessageEphemeral(msg) };
 
-        // Normalisasi pesan agar `msg.message.conversation` selalu berisi teks utama
+        const from = msg.key.remoteJid
+        const text = extractMessageFromGroupMessage(this.getMessageText(msg))
+
         msg.message.conversation = text;
 
         try {
@@ -94,11 +79,7 @@ export class ClientCommand {
         }
     }
 
-    // --- Logika Pemrosesan Pesan ---
 
-    /**
-     * Memproses pesan setelah melewati middleware.
-     */
     private async processMessage(msg: proto.IWebMessageInfo, from: string) {
         const userInSession = this.client.userActiveSession.getUserSession(from);
 
@@ -108,29 +89,24 @@ export class ClientCommand {
             this.handleNormalUser(msg);
         }
     }
-    
-    /**
-     * Menangani logika untuk pengguna yang sedang dalam sesi command.
-     */
-    private handleSessionUser(msg: proto.IWebMessageInfo, userInSession: SessionUserType) {
+
+    private handleSessionUser(msg: proto.IWebMessageInfo, userInSession: SessionUserType) {        
+
         if (!this.shouldProcess(msg)) return;
 
-        const commandName = msg.message?.conversation?.split(" ")[0] || "";
-        
-        // Cek apakah user ingin keluar dari sesi atau command tidak valid
+        const commandName = extractCommandFromPrefix(msg.message?.conversation || "") || "";        
+
         if (this.handleSessionExitOrInvalid(msg, commandName, userInSession)) {
-             const sessionCommand = this.findSessionCommand(commandName, userInSession.session.commands);
-             sessionCommand?.execute(msg, this.client, userInSession.data);
+            const sessionCommand = this.findSessionCommand(commandName, userInSession.session.commands);
+            sessionCommand?.execute(msg, this.client, userInSession.data);
         }
     }
 
-    /**
-     * Menangani logika untuk pengguna normal (tidak dalam sesi).
-     */
     private handleNormalUser(msg: proto.IWebMessageInfo) {
         if (!this.shouldProcess(msg)) return;
 
         const commandName = extractCommandFromPrefix(msg.message?.conversation || "");
+
         const command = this.getCommand(commandName || "");
 
         if (command) {
@@ -140,13 +116,14 @@ export class ClientCommand {
         }
     }
 
-    // --- Metode Helper & Utilitas ---
+    private parseMessageEphemeral(msg: proto.IWebMessageInfo) {
+        const content = msg.message?.ephemeralMessage?.message || msg.message;
+        return content
+    }
 
-    /**
-     * Mengekstrak teks dari berbagai jenis format pesan.
-     */
     private getMessageText(msg: proto.IWebMessageInfo): string {
-        const content = msg.message;
+        const content = msg.message?.ephemeralMessage?.message || msg.message;
+
         if (!content) return "";
 
         return content.buttonsResponseMessage?.selectedDisplayText ||
@@ -159,25 +136,18 @@ export class ClientCommand {
             content.conversation || "";
     }
 
-    /**
-     * Memeriksa apakah pesan harus diproses (bukan dari grup atau di-mention).
-     */
     private shouldProcess(msg: proto.IWebMessageInfo): boolean {
         const isGroup = msg.key.remoteJid?.endsWith("@g.us") || false;
-        if (!isGroup) return true; // Selalu proses jika ini private chat
+        if (!isGroup) return true;
 
         const clientId = this.client.getInfoClient()?.phone || "";
         const isMentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid
             ?.map(extractContactId)
             .includes(clientId) || false;
-        
-        return isMentioned; // Proses jika di grup dan bot di-mention
+
+        return isMentioned;
     }
 
-    /**
-     * Menangani kasus keluar sesi atau command tidak valid dalam sesi.
-     * @returns `true` jika command valid dan bisa dieksekusi, `false` sebaliknya.
-     */
     private handleSessionExitOrInvalid(msg: proto.IWebMessageInfo, commandName: string, session: SessionUserType): boolean {
         const commands = session.session.commands || [];
 
@@ -197,13 +167,10 @@ export class ClientCommand {
         return true;
     }
 
-    /**
-     * Membuat teks bantuan yang berisi daftar command dalam sebuah sesi.
-     */
     private buildSessionHelpText(sessionName: string): string {
         const mainCommand = this.getCommand(sessionName);
         if (!mainCommand?.commands) return 'Command sesi tidak ditemukan.';
-        
+
         let content = 'Perintah tidak valid. Gunakan salah satu perintah berikut:';
         mainCommand.commands.forEach(cmd => {
             content += `\n- *\`${cmd.name}\`* ${cmd.description}`;
@@ -212,9 +179,6 @@ export class ClientCommand {
         return content;
     }
 
-    /**
-     * Mencari command spesifik dari daftar command sesi.
-     */
     private findSessionCommand(commandName: string, sessionCommands: CommandSessionContentType[] = []): CommandSessionContentType | undefined {
         return sessionCommands.find(cmd => cmd.name === commandName);
     }

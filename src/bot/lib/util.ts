@@ -43,12 +43,15 @@ export async function middlewareApplier(
 }
 
 export function extractCommandFromPrefix(body: string) {
-
+    
     const prefix = client.getPrefix();
-    console.log(body.split(prefix), body.startsWith(prefix), prefix, body);
 
-    if (body.startsWith(prefix)) {
-        return body.split(prefix)[1].split(" ")[0].toLowerCase();
+    if(body.trim().startsWith("/")) {
+        return body.trim().split(" ")[0];
+    }
+
+    if (body.trim().startsWith(prefix)) {
+        return body.trim().split(prefix)[1].split(" ")[0].toLowerCase();
     }
     return null;
 }
@@ -64,17 +67,4 @@ export function extractMessageFromGroupMessage(text: string) {
     })
 
     return res.trim();
-}
-
-export function normalizeMessage(message: proto.IWebMessageInfo) {
-
-    const payload = {
-        key: message.key,
-        message: message.message,
-        from: message.participant || extractContactId(message.key.remoteJid || ""),
-        remoteJid: message.key.remoteJid || "",
-        fromMe: message.key.fromMe || false,
-        timestamp: message.messageTimestamp || 0
-    }
-
 }

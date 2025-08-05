@@ -46,12 +46,12 @@ dashboardHandler.get("/", async ctx => {
     const data = {
         block: blockCount[0].count,
         scheduler: schedulerCount[0].count,
-        is_active: client.isLoggedIn,
+        is_active: client.getStartTime() ? true : false,
         cpu: cpuUsagePercentage.toFixed(2),
         memory: ` ${memoryUsage.toFixed(2)}% (${(usedMem / 1024 / 1024).toFixed(2)} MB dari ${(totalMem / 1024 / 1024).toFixed(2)} MB)`,
-        uptime: getTimeFormat(client.limiter.startTime),
-        process: client?.limiter?.users.size ?? 0,
-        total_req: client?.limiter?.userTotal ?? 0
+        uptime: getTimeFormat(client.getStartTime() || 0),
+        process: client?.limiter?.getUserCount() ?? 0,
+        total_req: client?.limiter?.getCountRequest() ?? 0
     }
 
     return ctx.json(successResponse("sucess", data))

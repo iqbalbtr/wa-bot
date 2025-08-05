@@ -1,7 +1,6 @@
 import NodeCache from "@cacheable/node-cache";
 import makeWASocket, {
     CacheStore,
-    DisconnectReason,
     fetchLatestBaileysVersion,
     GroupMetadata,
     makeCacheableSignalKeyStore,
@@ -10,9 +9,7 @@ import makeWASocket, {
     WASocket,
 } from "@whiskeysockets/baileys";
 import P from "pino";
-import qrcode from "qrcode-terminal";
 import logger from "../../shared/lib/logger";
-import { Boom } from "@hapi/boom";
 import path from "path";
 import fs from "fs";
 import { ClientEvent } from "../type/client";
@@ -33,12 +30,12 @@ export class WhatsappClient {
     public limiter: ClientLimiter;
     public message: MessageClient;
     public readonly logger = logger;
+    public readonly groupCache = new NodeCache<GroupMetadata>();
+    startTime: number | null = null;
 
     private session: WASocket | null = null;
     private readonly msgRetryCounterCache = new NodeCache();
-    private readonly groupCache = new NodeCache<GroupMetadata>();
     private readonly authFolderPath = path.resolve(process.cwd(), '.wa-auth');
-    private startTime: number | null = null;
 
     constructor() {
         this.command = new ClientCommand(this);
@@ -53,10 +50,6 @@ export class WhatsappClient {
      * Membuat dan menginisialisasi sesi baru dengan WhatsApp.
      */
     public async createSession(): Promise<void> {
-        if (this.session) {
-            this.logger.info('Session already exists, skipping creation.');
-            return;
-        }
 
         const { state, saveCreds } = await useMultiFileAuthState(this.authFolderPath);
         const { version, isLatest } = await fetchLatestBaileysVersion();
@@ -74,8 +67,10 @@ export class WhatsappClient {
             cachedGroupMetadata: async (jid) => this.groupCache.get(jid),
         });
 
-        this.attachMainHandlers();
+
         this.session.ev.on('creds.update', saveCreds);
+        this.initializeEvents()
+        this.command.initialize()
     }
 
     /**
@@ -98,76 +93,10 @@ export class WhatsappClient {
         }
     }
 
-    // --- Event Handlers ---
-
-    /**
-     * Mendaftarkan handler utama untuk koneksi dan grup.
-     */
-    private attachMainHandlers(): void {
-        if (!this.session) return;
-
-        this.session.ev.on('connection.update', (update) => this.handleConnectionUpdate(update));
-        this.session.ev.on("groups.update", ([event]) => this.updateGroupCache(event.id!));
-        this.session.ev.on('group-participants.update', (event) => this.updateGroupCache(event.id));
-    }
-
-    /**
-     * Menangani pembaruan status koneksi.
-     */
-    private async handleConnectionUpdate(update: { connection?: any; lastDisconnect?: any; qr?: any; }): Promise<void> {
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr) {
-            this.logger.info('QR Code received, please scan.');
-            qrcode.generate(qr, { small: true });
-        }
-
-        if (connection === 'close') {
-            await this.handleConnectionClose(lastDisconnect);
-        } else if (connection === 'open') {
-            await this.handleConnectionOpen();
-        }
-    }
-
-    /**
-     * Logika yang dijalankan saat koneksi berhasil terbuka.
-     */
-    private async handleConnectionOpen(): Promise<void> {
-        this.startTime = Date.now();
-        this.logger.info("Connection established successfully.");
-        try {
-            await this.initializeEvents();
-            await this.command.initialize();
-            await this.message.initializeMessageStore(this);
-        } catch (error) {
-            this.logger.error("Failed during post-connection initialization:", error);
-        }
-    }
-
-    /**
-     * Logika yang dijalankan saat koneksi tertutup.
-     */
-    private async handleConnectionClose(lastDisconnect: any): Promise<void> {
-        const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-
-        if (statusCode === DisconnectReason.loggedOut) {
-            this.logger.warn("Connection logged out. Please delete the auth folder and restart.");
-            await this.destroySession(true); // Hancurkan sesi dan hapus folder auth
-            return;
-        }
-
-        this.logger.info(`Connection closed (Reason: ${DisconnectReason[statusCode as number] || 'Unknown'}). Attempting to reconnect...`);
-        this.session = null;
-        this.startTime = null;
-        await this.createSession().catch(err => this.logger.error("Failed to re-create session:", err));
-    }
-
-    // --- Dynamic Module Loaders ---
-
     /**
      * Memuat semua file event dari direktori secara dinamis.
      */
-    private async initializeEvents(): Promise<void> {
+    async initializeEvents(): Promise<void> {
         const eventPath = path.resolve(process.cwd(), 'src', 'bot', 'event');
         let total = 0;
         await this.loadModulesFromDirectory<ClientEvent>(eventPath, (event) => {
@@ -228,7 +157,7 @@ export class WhatsappClient {
         if (!session || !remoteJid) return;
 
         const commandText = message.message?.conversation?.split(' ')[0] || "";
-        if (!commandText) return; 
+        if (!commandText) return;
 
         const prefix = this.getPrefix();
         const commandName = commandText.replace(prefix, '');
@@ -245,19 +174,6 @@ export class WhatsappClient {
         }
 
         await session.sendMessage(remoteJid, { text: replyText }, { quoted: message });
-    }
-
-    /**
-     * Memperbarui cache metadata grup.
-     */
-    private async updateGroupCache(groupId: string): Promise<void> {
-        if (!this.session || !groupId) return;
-        try {
-            const metadata = await this.session.groupMetadata(groupId);
-            this.groupCache.set(groupId, metadata);
-        } catch (error) {
-            this.logger.warn(`Failed to update cache for group ${groupId}:`, error);
-        }
     }
 
     public getStartTime(): number {
