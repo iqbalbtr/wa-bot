@@ -1,4 +1,3 @@
-import logger from "../../shared/lib/logger";
 import { ClientEvent } from "../type/client";
 
 export default {

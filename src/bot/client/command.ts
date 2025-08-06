@@ -61,11 +61,11 @@ export class ClientCommand {
 
         msg.message = { ...msg.message, ...this.parseMessageEphemeral(msg) };
 
-        const from = msg.key.remoteJid
+        const from = msg.key.remoteJid.endsWith("@g.us") ? msg.key.participant || "" : msg.key.remoteJid || "";
         const text = extractMessageFromGroupMessage(this.getMessageText(msg))
 
         msg.message.conversation = text;
-
+        
         try {
             await middlewareApplier(
                 { client: this.client, params: msg },
@@ -152,7 +152,7 @@ export class ClientCommand {
         const commands = session.session.commands || [];
 
         if (commandName.toLowerCase() === '/exit') {
-            this.client.userActiveSession.removeUserSession(msg.key.remoteJid || '');
+            this.client.userActiveSession.removeUserSession(msg);
             this.client.getSession()?.sendMessage(msg.key.remoteJid!, { text: `Sesi *${session.session.name}* telah diakhiri.` }, { quoted: msg });
             return false;
         }

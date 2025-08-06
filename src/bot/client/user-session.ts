@@ -1,6 +1,5 @@
 import { proto } from "@whiskeysockets/baileys";
-import { extractContactId } from "../lib/util";
-import { Client, CommandType, SessionUserType } from "../type/client";
+import { Client, SessionUserType } from "../type/client";
 import logger from "../../shared/lib/logger";
 
 export class UserSessionClient {
@@ -12,7 +11,7 @@ export class UserSessionClient {
     public addUserSession(msg: proto.IWebMessageInfo, sessionName: string, data?: object): void {
         const clientSession = this.client.getSession();
 
-        const user = msg.key.remoteJid || ""
+        const user = msg.key.remoteJid?.endsWith("@g.us") ? msg.key.participant || "" : msg.key.remoteJid || "";
 
         const session = this.client.command.getCommand(sessionName);
 
@@ -33,25 +32,25 @@ export class UserSessionClient {
         })
 
         logger.info("all user session", this.userSessions)
-        
+
         return
     }
-    
+
     public getUserSession(userId: string): SessionUserType | undefined {
         logger.info("all user session", this.userSessions)
         return this.userSessions.get(userId);
     }
 
-    public removeUserSession(userId: string): void {
+    public removeUserSession(msg: proto.IWebMessageInfo): void {
+        const userId = msg.key.remoteJid?.endsWith("@g.us") ? msg.key.participant || "" : msg.key.remoteJid || "";
         this.userSessions.delete(userId);
-
     }
 
     public clearAllSessions(): void {
         this.userSessions.clear();
     }
 
-    public getUserSessions(){
+    public getUserSessions() {
         return Array.from(this.userSessions.keys())
     }
 }

@@ -18,6 +18,7 @@ import { ClientLimiter } from "./limiter";
 import { ClientCommand } from "./command";
 import { UserSessionClient } from "./user-session";
 import { MessageClient } from "./message";
+import { ContactClient } from "./contact";
 
 
 /**
@@ -31,7 +32,8 @@ export class WhatsappClient {
     public message: MessageClient;
     public readonly logger = logger;
     public readonly groupCache = new NodeCache<GroupMetadata>();
-    startTime: number | null = null;
+    public startTime: number | null = null;
+    public contact = new ContactClient(this);
 
     private session: WASocket | null = null;
     private readonly msgRetryCounterCache = new NodeCache();
