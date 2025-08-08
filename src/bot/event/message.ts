@@ -10,6 +10,7 @@ import { SessionUserType } from "../type/client";
 
 client.on('message', async (msg) => {
 
+    
     const userInSession = client.session.users.get(extractUserNumber(msg));
 
     /**
@@ -70,7 +71,7 @@ async function handleNormalUser(msg: Message) {
      * Melakukan validasi apakah pesan yang masuk dari private chat atau group chat
      */
     const isPrivateMessage = msg.from.endsWith("@c.us");
-    const isGroupMessage = msg.mentionedIds.includes(client.info.wid._serialized);
+    const isGroupMessage = msg.mentionedIds.includes(client.info.wid._serialized);    
 
     if (isPrivateMessage) {
         const command = getCommandFromPrefix(msg.body);
@@ -80,6 +81,8 @@ async function handleNormalUser(msg: Message) {
         return messageAutoReply(msg, client);
     }
 
+    
+    
     if (isGroupMessage) {
         const bodyParts = msg.body.split(" ");
         msg.body = bodyParts.slice(1).join(" ");

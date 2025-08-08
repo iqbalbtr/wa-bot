@@ -20,7 +20,7 @@
     "@google/generative-ai": "^0.24.0",
     "@hono/node-server": "^1.14.4",
     "@hono/zod-validator": "^0.7.0",
-    "@imgly/background-removal-node": "^1.4.5",
+    "@imgly/background-removal-node": "^1. .5",
     "@tobyg74/tiktok-api-dl": "^1.2.8",
     "axios": "^1.8.3",
     "better-sqlite3": "^11.9.1",
