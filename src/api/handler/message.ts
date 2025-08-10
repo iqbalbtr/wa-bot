@@ -6,6 +6,7 @@ import { HTTPException } from "hono/http-exception";
 import { successResponse } from "../lib/util";
 import fs from "fs";
 import mime from "mime-types";
+import logger from "../../shared/lib/logger";
 
 const messageRoute = new Hono();
 
@@ -81,8 +82,7 @@ messageRoute.post("/forward",
 
                 resultSuccessCount += 1;
             } catch (error) {
-                // Log error untuk setiap target yang gagal
-                console.error(`Failed to forward message to ${target}:`, error);
+                logger.warn(`Failed to forward message to ${target}:`, error);
             }
         }
 

@@ -2,7 +2,7 @@ import { BaileysEventMap, proto } from "@whiskeysockets/baileys";
 import { Client, CommandSessionContentType, CommandType, SessionUserType } from "../type/client";
 import path from "path";
 import fs from "fs";
-import { extractCommandFromPrefix, extractContactId, extractMessageFromGroupMessage, middlewareApplier } from "../lib/util";
+import { extractCommandFromPrefix, extractContactId, extractLid, extractMessageFromGroupMessage, middlewareApplier } from "../lib/util";
 import logger from "../../shared/lib/logger";
 import { blockUserMiddleware } from "../middleware/block-user";
 import { limiterMiddleware } from "../middleware/limiter";
@@ -21,6 +21,7 @@ export class ClientCommand {
     }
 
     public getCommands(): CommandType[] {
+
         return Array.from(this.commands.values());
     }
 
@@ -34,14 +35,33 @@ export class ClientCommand {
 
 
     private async loadCommandsFromDirectory() {
-        const commandPath = path.resolve(process.cwd(), 'src', 'bot', 'command');
+        // Resolve relative to current file so it works from dist or src
+        const baseDir = path.resolve(__dirname, '..', 'command');
         try {
-            const commandFiles = fs.readdirSync(commandPath).filter(file => file.endsWith('.js') || file.endsWith('.ts'));
+            if (!fs.existsSync(baseDir)) {
+                this.client.logger.warn(`Command directory not found: ${baseDir}`);
+                return;
+            }
+            const commandFiles = fs.readdirSync(baseDir).filter(file => file.endsWith('.js'));
             let total = 0;
             for (const file of commandFiles) {
-                const commandModule = (await import(path.join(commandPath, file))).default;
-                if (commandModule && commandModule.name) {
-                    this.addCommand(commandModule as CommandType);
+                const fullPath = path.join(baseDir, file);
+                let mod: any;
+                try {
+                    // Prefer require in CJS environments
+                    // eslint-disable-next-line @typescript-eslint/no-var-requires
+                    mod = require(fullPath);
+                    mod = mod?.default || mod;
+                } catch (reqErr) {
+                    try {
+                        mod = (await import(fullPath)).default;
+                    } catch (impErr) {
+                        this.client.logger.error(`Failed to load command module ${file}:`, impErr);
+                        continue;
+                    }
+                }
+                if (mod && mod.name) {
+                    this.addCommand(mod as CommandType);
                     total++;
                 }
             }
@@ -55,6 +75,7 @@ export class ClientCommand {
     public async handleCommandEvent(data: BaileysEventMap["messages.upsert"]): Promise<void> {
         const msg = data.messages[0];
 
+
         if (msg.key.fromMe || !msg.message || !msg.key.remoteJid) {
             return;
         }
@@ -65,7 +86,7 @@ export class ClientCommand {
         const text = extractMessageFromGroupMessage(this.getMessageText(msg))
 
         msg.message.conversation = text;
-        
+
         try {
             await middlewareApplier(
                 { client: this.client, params: msg },
@@ -90,11 +111,11 @@ export class ClientCommand {
         }
     }
 
-    private handleSessionUser(msg: proto.IWebMessageInfo, userInSession: SessionUserType) {        
+    private handleSessionUser(msg: proto.IWebMessageInfo, userInSession: SessionUserType) {
 
         if (!this.shouldProcess(msg)) return;
 
-        const commandName = extractCommandFromPrefix(msg.message?.conversation || "") || "";        
+        const commandName = extractCommandFromPrefix(msg.message?.conversation || "") || "";
 
         if (this.handleSessionExitOrInvalid(msg, commandName, userInSession)) {
             const sessionCommand = this.findSessionCommand(commandName, userInSession.session.commands);
@@ -106,12 +127,12 @@ export class ClientCommand {
         if (!this.shouldProcess(msg)) return;
 
         const commandName = extractCommandFromPrefix(msg.message?.conversation || "");
-
         const command = this.getCommand(commandName || "");
 
         if (command) {
             command.execute(msg, this.client);
         } else {
+
             this.client.defaultMessageReply(msg);
         }
     }
@@ -127,6 +148,7 @@ export class ClientCommand {
         if (!content) return "";
 
         return content.buttonsResponseMessage?.selectedDisplayText ||
+            content.documentWithCaptionMessage?.message?.documentMessage?.caption ||
             content.listResponseMessage?.singleSelectReply?.selectedRowId ||
             content.templateButtonReplyMessage?.selectedDisplayText ||
             content.extendedTextMessage?.text ||
@@ -136,16 +158,50 @@ export class ClientCommand {
             content.conversation || "";
     }
 
+    private extractMentionedJids(message: proto.IWebMessageInfo): string[] {
+        const msg = message.message;
+        if (!msg) return [];
+
+        if (msg.conversation && message.message?.extendedTextMessage?.contextInfo?.mentionedJid) {
+            return message.message.extendedTextMessage.contextInfo.mentionedJid;
+        }
+
+        if (msg.extendedTextMessage?.contextInfo?.mentionedJid) {
+            return msg.extendedTextMessage.contextInfo.mentionedJid;
+        }
+
+        for (const key of Object.keys(msg)) {
+            const mediaMsg = (msg as any)[key];
+            if (mediaMsg?.contextInfo?.mentionedJid) {
+                return mediaMsg.contextInfo.mentionedJid;
+            }
+        }
+
+        return [];
+    }
+
     private shouldProcess(msg: proto.IWebMessageInfo): boolean {
         const isGroup = msg.key.remoteJid?.endsWith("@g.us") || false;
         if (!isGroup) return true;
 
-        const clientId = this.client.getInfoClient()?.phone || "";
-        const isMentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid
-            ?.map(extractContactId)
-            .includes(clientId) || false;
+        let isGroupAccepted = false;
+        const clientId = this.client.getInfoClient()
 
-        return isMentioned;
+        this.extractMentionedJids(msg).forEach(txt => {
+
+            if (isGroupAccepted) return;
+
+            if (txt.endsWith("@lid") && extractLid(txt).includes(clientId?.lid || "")) {
+                isGroupAccepted = true;
+            } else {
+                if (extractContactId(txt) == clientId?.phone) {
+                    isGroupAccepted = true;
+                }
+            }
+
+        })
+
+        return isGroupAccepted;
     }
 
     private handleSessionExitOrInvalid(msg: proto.IWebMessageInfo, commandName: string, session: SessionUserType): boolean {

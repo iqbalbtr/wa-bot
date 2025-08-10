@@ -1,7 +1,6 @@
 import { port } from "./shared/constant/env";
 import client from "./bot";
 import "dotenv/config"
-import { serve } from '@hono/node-server'
 import api from "./api";
 
 client.createSession()

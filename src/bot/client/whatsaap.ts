@@ -67,12 +67,12 @@ export class WhatsappClient {
             msgRetryCounterCache: this.msgRetryCounterCache as CacheStore,
             generateHighQualityLinkPreview: true,
             cachedGroupMetadata: async (jid) => this.groupCache.get(jid),
-        });
-
+        });        
 
         this.session.ev.on('creds.update', saveCreds);
         this.initializeEvents()
         this.command.initialize()
+        this.contact.initialize()
     }
 
     /**
@@ -99,7 +99,8 @@ export class WhatsappClient {
      * Memuat semua file event dari direktori secara dinamis.
      */
     async initializeEvents(): Promise<void> {
-        const eventPath = path.resolve(process.cwd(), 'src', 'bot', 'event');
+        // Resolve relative to current compiled/source location so it works in both src and dist
+        const eventPath = path.resolve(__dirname, '..', 'event');
         let total = 0;
         await this.loadModulesFromDirectory<ClientEvent>(eventPath, (event) => {
             this.session?.ev.on(event.event, (e: any) => event.listener(e, this));
@@ -114,14 +115,33 @@ export class WhatsappClient {
     private async loadModulesFromDirectory<T>(dirPath: string, onModuleLoad: (module: T) => void): Promise<void> {
         try {
             if (!fs.existsSync(dirPath)) return;
-            const files = fs.readdirSync(dirPath).filter(file => file.endsWith('.js') || file.endsWith('.ts'));
+            const files = fs.readdirSync(dirPath).filter(file => /\.(js|ts)$/.test(file));
 
             for (const file of files) {
-                const modulePath = path.join(dirPath, file);
-                const module = (await import(modulePath)).default as T;
-                if (module) {
-                    onModuleLoad(module);
+                const rawPath = path.join(dirPath, file);
+                // Prefer .js counterpart if running from dist and both exist
+                let modulePath = rawPath;
+                if (file.endsWith('.ts')) {
+                    const jsCandidate = rawPath.replace(/\.ts$/, '.js');
+                    if (fs.existsSync(jsCandidate)) modulePath = jsCandidate;
                 }
+
+                let loaded: any;
+                try {
+                    // Use require for CJS environment; fallback to dynamic import if needed
+                    // eslint-disable-next-line @typescript-eslint/no-var-requires
+                    loaded = require(modulePath);
+                    loaded = loaded?.default || loaded;
+                } catch (inner) {
+                    try {
+                        loaded = (await import(modulePath)).default;
+                    } catch (impErr) {
+                        this.logger.error(`Failed to import module: ${modulePath}`, impErr);
+                        continue;
+                    }
+                }
+
+                if (loaded) onModuleLoad(loaded as T);
             }
         } catch (error) {
             this.logger.error(`Failed to load modules from ${dirPath}:`, error);
@@ -139,7 +159,7 @@ export class WhatsappClient {
         return process.env.PREFIX || '!';
     }
 
-    public getInfoClient(): { name: string; phone: string } | null {
+    public getInfoClient() {
         if (!this.session?.user) {
             this.logger.warn("Session or user info is not available.");
             return null;
@@ -147,6 +167,7 @@ export class WhatsappClient {
         return {
             name: this.session.user.name || "Unknown",
             phone: this.session.user.id.split(":")[0] || "Unknown",
+            lid: this.session.user.lid?.split(":")[0] || "Unknown",
         };
     }
 
@@ -154,6 +175,7 @@ export class WhatsappClient {
      * Mengirim balasan default jika command tidak ditemukan.
      */
     public async defaultMessageReply(message: proto.IWebMessageInfo): Promise<void> {
+
         const session = this.getSession();
         const remoteJid = message.key?.remoteJid;
         if (!session || !remoteJid) return;
@@ -175,7 +197,7 @@ export class WhatsappClient {
             replyText = `Mungkin yang Anda maksud adalah: *${prefix}${suggestion}*`;
         }
 
-        await session.sendMessage(remoteJid, { text: replyText }, { quoted: message });
+        await session.sendMessage(remoteJid, { text: replyText }, {quoted: message});
     }
 
     public getStartTime(): number {

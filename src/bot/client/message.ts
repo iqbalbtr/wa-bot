@@ -1,5 +1,6 @@
 import { AnyMessageContent, MiscMessageGenerationOptions, WASocket } from "@whiskeysockets/baileys";
 import { WhatsappClient } from "./whatsaap";
+import logger from "../../shared/lib/logger";
 
 type PendingMessage = {
     time: number;
@@ -47,7 +48,7 @@ export class MessageClient {
             try {
                 await this.session.sendMessage(pending.to, pending.message, pending.options);
             } catch (error) {
-                console.error("Failed to send pending message:", error);
+                logger.error("Failed to send pending message:", error);
                 this.messagePending.push(pending);
             }
         }

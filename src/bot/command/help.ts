@@ -1,8 +1,6 @@
 import { prefix } from "../../shared/constant/env"
 import { generateSessionFooterContent } from "../lib/session";
-import { extractContactId } from "../lib/util";
 import { Client, CommandType } from "../type/client";
-// import { ClientType, CommandType } from "../type/client";
 
 export default {
     name: "help",

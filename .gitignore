@@ -18,6 +18,11 @@ src/database/migrations
 
 .wa-auth
 
+/assets/contacts.json
+eng.traineddata
+
 logs
 
 wa-logs.txt
+
+.vscode

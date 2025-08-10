@@ -13,6 +13,10 @@ export function extractContactId(message: string): string {
     return message.split("@")[0].replace(/[^0-9]/g, "");
 }
 
+export function extractLid(message: string): string {
+    return message.split(":")[0]
+}
+
 export async function middlewareApplier(
     context: ClientContextType<any>,
     middlewares: ClientMiddlewareType<any>[],

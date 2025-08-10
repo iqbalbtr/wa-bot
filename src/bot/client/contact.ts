@@ -10,6 +10,10 @@ export class ContactClient {
     constructor(private client: WhatsappClient) {
     }
 
+    public initialize() {
+        this.loadContactsFromFile();
+    }
+
     async getContact() {
         return this.contacts;
     }

@@ -1,5 +1,7 @@
 import * as os from "os"
 import { CommandType } from "../type/client";
+import { prefix } from "../../shared/constant/env";
+import logger from "../../shared/lib/logger";
 
 function getTimeFormat(from: number) {
     const uptimeMilliseconds = Date.now() - from;
@@ -11,8 +13,9 @@ function getTimeFormat(from: number) {
     return uptimeFormatted
 }
 
-export default{
+export default {
     name: "status",
+    usage: `${prefix}converter`,
     description: "Menampilkan status bot, termasuk uptime dan penggunaan sumber daya.",
     execute: async (message, client) => {
         try {
@@ -47,7 +50,7 @@ export default{
                 text: content
             }, { quoted: message });
         } catch (error) {
-
+            logger.warn("Status error:", error);
         }
     }
 } as CommandType

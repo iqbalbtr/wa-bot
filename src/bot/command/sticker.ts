@@ -25,7 +25,6 @@ export default {
                 }, { quoted: message });
             }
 
-            // Download the image using Baileys
             const buffer = await downloadMediaMessage(message, 'buffer', {});
 
             logger.info(buffer)
@@ -36,14 +35,12 @@ export default {
                 }, { quoted: message });
             }
 
-            // Check file size (5MB limit)
             if (buffer.length >= 5 * 1024 * 1024) {
                 return session.sendMessage(message.key.remoteJid, { 
                     text: "Ukuran gambar terlalu besar (maksimal 5MB)" 
                 }, { quoted: message });
             }
 
-            // Process image with Sharp
             const metadata = await sharp(buffer).metadata();
 
             if (!metadata.width || !metadata.height) {
@@ -72,13 +69,12 @@ export default {
                 })
                 .toBuffer();
 
-            // Send as sticker using Baileys
             await session.sendMessage(message.key.remoteJid, {
                 sticker: resizedImage
             }, { quoted: message });
 
         } catch (error) {
-            console.error("Sticker error:", error);
+            logger.warn("Sticker error:", error);
             if (session && message.key?.remoteJid) {
                 session.sendMessage(message.key.remoteJid, { 
                     text: 'Terjadi kesalahan saat mengkonversi gambar' 

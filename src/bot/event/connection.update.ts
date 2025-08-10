@@ -1,16 +1,28 @@
 import { Boom } from '@hapi/boom';
 import { DisconnectReason } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
-import { WhatsappClient } from '../client/whatsaap';
 import { ClientEvent } from '../type/client';
+import logger from '../../shared/lib/logger';
+import type { WhatsappClient } from '../client/whatsaap';
 
 
 async function handleConnectionOpen(client: WhatsappClient): Promise<void> {
+
+    const session = client.getSession()
+
     client.startTime = Date.now();
     client.logger.info("✅ Connection established successfully.");
 
     try {
         await client.message.initializeMessageStore(client);
+
+        const groupMetadata = await session?.groupFetchAllParticipating()
+
+        logger.info("Fetched & inserting group metadata");
+        for (const group in groupMetadata) {
+            client.groupCache.set(group, groupMetadata[group]);
+        }
+
     } catch (error) {
         client.logger.error("❌ Failed during post-connection initialization:", error);
     }

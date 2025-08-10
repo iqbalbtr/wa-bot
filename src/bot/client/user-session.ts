@@ -26,19 +26,18 @@ export class UserSessionClient {
             return
         }
 
+        logger.warn("Session not found for user:", user);
+
         this.userSessions.set(user, {
             session,
             data: data || {}
         })
 
-        logger.info("all user session", this.userSessions)
-
         return
     }
 
     public getUserSession(userId: string): SessionUserType | undefined {
-        logger.info("all user session", this.userSessions)
-        return this.userSessions.get(userId);
+                return this.userSessions.get(userId);
     }
 
     public removeUserSession(msg: proto.IWebMessageInfo): void {
