@@ -19,18 +19,12 @@ export class ContactClient {
     }
 
     async setContact(contacts: Contact[]) {
-
-        if(contacts.length === 0) {
-            this.loadContactsFromFile()
-        } else {
-            this.contacts = contacts.filter(contact => contact.id && contact.name && contact.id.endsWith("@g.us"));
-            this.saveContactsToFile(contacts);
-        }
-
+        this.contacts = contacts.filter(contact => contact.id && contact.name && contact.id.endsWith("@g.us"));
+        this.saveContactsToFile(contacts);
     }
 
     private async saveContactsToFile(contacts: Contact[]) {
-        this.setContact(contacts);
+        this.contacts = contacts.filter(contact => contact.id && contact.name && contact.id.endsWith("@g.us"));
         fs.writeFileSync(path.join(process.cwd(), "assets", "contacts.json"), JSON.stringify(this.contacts, null, 2));
         this.client.logger.info("Contacts saved to contacts.json");
     }

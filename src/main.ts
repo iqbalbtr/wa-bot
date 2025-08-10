@@ -2,16 +2,17 @@ import client from "./bot";
 import "dotenv/config"
 import api from "./api";
 import { port } from "./shared/constant/env";
+import { serve } from "@hono/node-server";
+import logger from "./shared/lib/logger";
 
-client.createSession()
-// serve({
-//   fetch: api.fetch,
-//   port: +port,
-// }, async (e) => {
+serve({
+    fetch: api.fetch,
+    port: +port,
+}, async (e) => {
 
-//   console.log("server is running at", e.port)
+    logger.info("server is running at", e.port)
 
-//   // Initialize the bot client
-//   console.log("starting bot");
-//   await client.initialize()
-// })
+    // Initialize the bot client
+    logger.info("starting bot");
+    client.createSession()
+})
