@@ -1,14 +1,7 @@
 [
     {
-        "date": "10 Agustus 2025",
-        "changes": [
-            "Migrasi core ke Baileys",
-            "Menambah command pdf2docx"
-        ]
-    },
-    {
         "date": "17 Maret 2025",
-        "changes" : [
+        "changes": [
             "Memperbaiki transparasi stiker",
             "Menambahkan command img to text",
             "Meningkatkan kemampuan interaksi",
@@ -17,6 +10,14 @@
             "Refactor code logic",
             "Implementasi sesi pesan",
             "Menambah tutorial membuat command di docs"
+        ]
+    },
+    {
+        "date": "10 Agustus 2025",
+        "changes": [
+            "Migrasi core ke Baileys",
+            "Menambah command pdf2docx",
+            "Fix bot crash saat menerima pesan"
         ]
     }
 ]

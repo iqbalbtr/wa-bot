@@ -10,7 +10,7 @@ serve({
     port: +port,
 }, async (e) => {
 
-    logger.info("server is running at", e.port)
+    logger.info(`server is running at ${e.port}`)
 
     // Initialize the bot client
     logger.info("starting bot");
