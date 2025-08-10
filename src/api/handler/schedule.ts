@@ -6,7 +6,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod"
 import { successResponse } from "../lib/util";
 import { HTTPException } from "hono/http-exception";
-import { activeSchduleCurrent } from "../../schedule";
+import { activateNewSchedule } from "../../schedule";
 
 const scheduleHandler = new Hono()
 
@@ -71,7 +71,7 @@ scheduleHandler.post('/',
             contact_ids: JSON.stringify(body.contact_ids) ?? '',
         })
 
-        await activeSchduleCurrent(body)
+        await activateNewSchedule(body)
 
         return ctx.json(successResponse("success create schedule", 201))
     })

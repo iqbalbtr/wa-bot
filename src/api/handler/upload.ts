@@ -29,7 +29,7 @@ uploadHandler.post("/",
 
         const file = body["file"] as File
 
-        const result = saveFileToTemp(Buffer.from(await file.arrayBuffer()), ["bot"], `.${file.name.split(".").pop()}`, (e, isDelete) => {
+        const result = saveFileToTemp(new Uint8Array(await file.arrayBuffer()), ["bot"], `.${file.name.split(".").pop()}`, (e, isDelete) => {
             if (body.is_temp) {
                 setTimeout(() => {
                     isDelete()

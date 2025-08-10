@@ -1,114 +1,80 @@
 import Tiktok from '@tobyg74/tiktok-api-dl';
 import path from "path";
-import fs from "fs"
-import { MessageMedia } from "whatsapp-web.js";
-import { createSessionUser, generateSessionFooterContent } from "../lib/session";
+import fs from "fs";
 import { childProcessCallback } from "../../shared/lib/util";
+import { proto } from "@whiskeysockets/baileys";
 import { CommandType } from '../type/client';
+import { generateSessionFooterContent } from '../lib/session';
+import logger from '../../shared/lib/logger';
 
-module.exports = {
+export default {
     name: "downloader",
     description: "Alat pengunduh video media sosial",
-    execute: async (message) => {
+    execute: async (message: proto.IWebMessageInfo, client) => {
+        const session = client.getSession();
+        if (!session || !message.key?.remoteJid) return;
         let content = generateSessionFooterContent('downloader');
-        createSessionUser(message, 'downloader')
-        return message.reply(content)
+        client.userActiveSession.addUserSession(message, 'downloader');
+        await session.sendMessage(message.key.remoteJid, { text: content }, { quoted: message });
     },
     commands: [
         {
             name: '/tiktok',
-            description: ` Downloader video dari tiktok pastikan setelah command kirim juga linknya`,
-            execute: async (message) => {
-                const link = message.body.split(" ")[1];
-
-                if (!link) return message.reply('Link tidak ditemukan');
-
+            description: `Downloader video dari tiktok pastikan setelah command kirim juga linknya`,
+            execute: async (message: proto.IWebMessageInfo, client) => {
+                const session = client.getSession();
+                if (!session || !message.key?.remoteJid) return;
+                const link = message.message?.conversation?.split(" ")[1];
+                if (!link) {
+                    await session.sendMessage(message.key.remoteJid, { text: 'Link tidak ditemukan' }, { quoted: message });
+                    return;
+                }
                 try {
                     const res = await Tiktok.Downloader(link, { version: "v3" });
-
                     if (!res.result?.videoHD) {
-                        return message.reply("Gagal mendapatkan video. Coba gunakan link lain.");
+                        await session.sendMessage(message.key.remoteJid, { text: "Gagal mendapatkan video. Coba gunakan link lain." }, { quoted: message });
+                        return;
                     }
-
-                    message.reply('Link unduh : ' + res.result.videoHD);
+                    await session.sendMessage(message.key.remoteJid, { text: 'Link unduh : ' + res.result.videoHD }, { quoted: message });
                 } catch (error) {
-                    message.reply("Terjadi kesalahan saat mengunduh video.");
+                    logger.warn("Downloader error:", error);
+                    await session.sendMessage(message.key.remoteJid, { text: "Terjadi kesalahan saat mengunduh video." }, { quoted: message });
                 }
             },
         },
         {
             name: "/yt-video",
             description: "Downloader video dari youtube, pastikan setelah command kirim juga linknya",
-            execute: async (message) => {
-                const link = message.body.split(" ")[1];
-
-                if (!link) return message.reply('Link tidak ditemukan');
-
+            execute: async (message: proto.IWebMessageInfo, client) => {
+                const session = client.getSession();
+                if (!session || !message.key?.remoteJid) return;
+                const link = message.message?.conversation?.split(" ")[1];
+                if (!link) {
+                    await session.sendMessage(message.key.remoteJid, { text: 'Link tidak ditemukan' }, { quoted: message });
+                    return;
+                }
                 try {
-
                     const outputpath = path.join(__dirname, "../temp");
-
-                    const res = await childProcessCallback("yt-dlp",
-                        "https://www.youtube.com/watch?v=ZE5pIkbSI2Q",
-                        "-o", `${outputpath}/%(title)s.%(ext)s`,
-                    );
-
-                    const outputFile = res.find(fo => fo.startsWith("[download] Destination:"))
-
+                    const res = await childProcessCallback("yt-dlp", link, "-o", `${outputpath}/%(title)s.%(ext)s`);
+                    const outputFile = res.find(fo => fo.startsWith("[download] Destination:"));
                     if (outputFile) {
                         const fileName = outputFile.split(": ")[1].trim();
-                        
-                        const media = MessageMedia.fromFilePath(fileName)
-
-                        message.reply(media, undefined, { 
-                            caption: "Berikut video yang kamu minta",
-                            sendMediaAsDocument: true
-                         });
-
-                        fs.rmSync(fileName, { force: true });
+                        // Send as document
+                        const buffer = fs.readFileSync(fileName);
+                        await session.sendMessage(message.key.remoteJid, {
+                            document: buffer,
+                            mimetype: "video/mp4",
+                            fileName: path.basename(fileName),
+                            caption: "Berhasil mengunduh video"
+                        }, { quoted: message });
+                    } else {
+                        await session.sendMessage(message.key.remoteJid, { text: "Gagal menemukan file hasil unduhan." }, { quoted: message });
                     }
-
                 } catch (error) {
-                    message.reply("Terjadi kesalahan saat mengunduh video.");
+                    logger.warn("Downloader error:", error);
+                    await session.sendMessage(message.key.remoteJid, { text: "Terjadi kesalahan saat mengunduh video." }, { quoted: message });
                 }
-            }
-        },
-        {
-            name: "/yt-music",
-            description: "Downloader video dari youtube, pastikan setelah command kirim juga linknya",
-            execute: async (message) => {
-                const link = message.body.split(" ")[1];
-
-                if (!link) return message.reply('Link tidak ditemukan');
-
-                try {
-
-                    const outputpath = path.join(__dirname, "../temp");
-
-                    const res = await childProcessCallback("yt-dlp",
-                        "https://www.youtube.com/watch?v=ZE5pIkbSI2Q",
-                        "-o", `${outputpath}/%(title)s.%(ext)s`,
-                    );
-
-                    const outputFile = res.find(fo => fo.startsWith("[download] Destination:"))
-
-                    if (outputFile) {
-                        const fileName = outputFile.split(": ")[1].trim();
-                        
-                        const media = MessageMedia.fromFilePath(fileName)
-
-                        message.reply(media, undefined, { 
-                            caption: "Berikut video yang kamu minta",
-                            sendMediaAsDocument: true
-                         });
-
-                        fs.rmSync(fileName, { force: true });
-                    }
-
-                } catch (error) {
-                    message.reply("Terjadi kesalahan saat mengunduh video.");
-                }
-            }
+            },
         }
     ]
-} as CommandType
+} as CommandType;

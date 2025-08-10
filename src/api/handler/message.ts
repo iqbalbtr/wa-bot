@@ -1,10 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from '@hono/zod-validator';
 import { z } from "zod";
-import { MessageMedia } from "whatsapp-web.js";
 import client from "../../bot";
 import { HTTPException } from "hono/http-exception";
 import { successResponse } from "../lib/util";
+import fs from "fs";
+import mime from "mime-types";
+import logger from "../../shared/lib/logger";
 
 const messageRoute = new Hono();
 
@@ -23,38 +25,64 @@ messageRoute.post("/forward",
     async (ctx) => {
         const { message, targets, attachment } = ctx.req.valid("json");
 
-        if (!client.isLoggedIn) {
+        const session = client.getSession();
+
+        if (!session) {
             throw new HTTPException(401, { message: "Client is not logged in" });
         }
-        // Pengecekan login ganda telah dihapus dari sini
+
         let resultSuccessCount = 0;
 
         for (const target of targets) {
             try {
                 if (attachment && attachment.length > 0) {
 
-                    const sendAllMessage = attachment.map(async (path, i) => {
+                    const sendAllMessage = attachment.map(async (filePath, i) => {
 
-                        const media = MessageMedia.fromFilePath(path);
+                        if (!fs.existsSync(filePath)) {
+                            throw new Error(`File not found: ${filePath}`);
+                        }
+
+                        const buffer = fs.readFileSync(filePath);
+                        const mimeType = mime.lookup(filePath) || 'application/octet-stream';
+                        const fileName = filePath.split(/[\\/]/).pop() || 'file';
                         const isLastAttachment = i === attachment.length - 1;
 
-                        return client.sendMessage(target, media, {
-                            caption: isLastAttachment ? message : undefined
-                        });
+                        if (mimeType.startsWith('image/')) {
+                            return session.sendMessage(target, {
+                                image: buffer,
+                                caption: isLastAttachment ? message : undefined
+                            });
+                        } else if (mimeType.startsWith('video/')) {
+                            return session.sendMessage(target, {
+                                video: buffer,
+                                caption: isLastAttachment ? message : undefined
+                            });
+                        } else if (mimeType.startsWith('audio/')) {
+                            return session.sendMessage(target, {
+                                audio: buffer,
+                                mimetype: mimeType
+                            });
+                        } else {
+                            return session.sendMessage(target, {
+                                document: buffer,
+                                mimetype: mimeType,
+                                fileName: fileName,
+                                caption: isLastAttachment ? message : undefined
+                            });
+                        }
+                    });
 
-                    })
-
-                    await Promise.all(sendAllMessage)
+                    await Promise.all(sendAllMessage);
 
                 } else {
                     // Kirim pesan teks biasa jika tidak ada lampiran
-                    await client.sendMessage(target, message);
+                    await session.sendMessage(target, { text: message });
                 }
 
                 resultSuccessCount += 1;
             } catch (error) {
-                // Log error untuk setiap target yang gagal
-                console.error(`Failed to forward message to ${target}:`, error);
+                logger.warn(`Failed to forward message to ${target}:`, error);
             }
         }
 

@@ -1,63 +1,13 @@
-import { Message } from "whatsapp-web.js";
+import { proto } from "@whiskeysockets/baileys";
 import client from "../..";
 import { prefix } from "../../../shared/constant/env";
-import { ClientType, CommandSessionContentType, SessionUserType } from "../../type/client";
-import { extractUserNumber } from "../util";
-
-export function sessionHandler(msg: Message, session: SessionUserType, client: ClientType) {
-
-    const command  = msg.body.split(" ")[0]
-    const commands = session.session.commands || []
-
-    if (command.toLowerCase() !== '/exit' && !commands.map(fo => fo.name).includes(command)) {
-
-        const content = generateSessionFooterContent(session.session.name)
-
-        msg.reply(content)
-
-        return false
-    }
-
-    if (command.toLowerCase() == '/exit') {
-        client.session.users.delete(extractUserNumber(msg));
-        msg.reply(`Anda keluar dari sesi gunakan *\`${prefix}help\`* untuk melihat daftar perintah`)
-        return false
-    }
-
-    return true
-}
-
-export function createSessionUser(message: Message, sessionName: string, data?: object) {
-
-    const user = extractUserNumber(message);
-
-    const session = client.commands.get(sessionName);
-
-    if (!session)
-        return message.reply("Maaf terjadi kesalah tidak dikenali")
-
-    return client.session.users.set(user, {
-        session,
-        data: data || {}
-    })
-}
-
-export function deleteSessionUser(message: Message) {
-
-    const user = extractUserNumber(message);
-
-    const session = client.session.users.get(user);
-
-    if (!session)
-        return message.reply("Maaf terjadi kesalah tidak dikenali")
-
-    return client.session.users.delete(user)
-}
+import { Client, CommandSessionContentType, SessionUserType } from "../../type/client";
+import { extractContactId } from "../util";
 
 export function generateSessionFooterContent(name: string) {
-    const session = client.commands.get(name);
+    const session = client.command.getCommand(name);
 
-    if(!session?.commands){
+    if (!session?.commands) {
         return ''
     }
 
@@ -71,10 +21,10 @@ export function generateSessionFooterContent(name: string) {
     return content
 }
 
-export function handleSessionCommand(command: string, sessions: CommandSessionContentType[]){
-    
-    const commandIsExist = sessions.find((fo) =>  fo.name == command);
+export function handleSessionCommand(command: string, sessions: CommandSessionContentType[]) {
 
-    if(commandIsExist) return commandIsExist
+    const commandIsExist = sessions.find((fo) => fo.name == command);
+
+    if (commandIsExist) return commandIsExist
 
 }

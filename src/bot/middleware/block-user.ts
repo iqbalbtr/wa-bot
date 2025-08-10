@@ -1,18 +1,24 @@
-import { Message } from "whatsapp-web.js";
+import { proto } from "@whiskeysockets/baileys";
 import db from "../../database";
 import { blockedUsers } from "../../database/schema";
 import { ClientContextType } from "../type/client";
+import { extractContactId } from "../lib/util";
 
-export async function blockUserMiddleware(context: ClientContextType<Message>, next: () => void) {
+export async function blockUserMiddleware(context: ClientContextType<proto.IWebMessageInfo>, next: () => void) {
 
+    const session = context.client.getSession();
     const { params: message } = context;
 
-    const userId = message.from
+    const userId = extractContactId(message.key.remoteJid || "");
 
     const blockUsers = await db.select().from(blockedUsers)
 
     if (blockUsers.map(user => user.contact_id).includes(userId)) {
-        message.reply("⚠️ Kamu sudah diblokir oleh bot ini!")
+        await session?.sendMessage(message.key.remoteJid!, {
+            text: "Maaf, kamu telah diblokir oleh bot ini."
+        },{
+            quoted: message
+        });
         return;
     }
 

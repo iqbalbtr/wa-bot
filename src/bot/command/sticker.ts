@@ -1,80 +1,85 @@
-import { Message, MessageMedia } from "whatsapp-web.js";
 import { CommandType } from "../type/client";
 import sharp from "sharp";
-import fs from 'fs'
 import { prefix } from "../../shared/constant/env";
+import { downloadMediaMessage } from "@whiskeysockets/baileys";
+import logger from "../../shared/lib/logger";
 
-function base64ToImage(base64String: string) {
-    const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
-    return Buffer.from(base64Data, 'base64');
-}
-
-module.exports = {
+export default {
     name: "sticker",
     description: "Mengonversi gambar yang dikirim menjadi stiker WhatsApp",
     usage: `\`${prefix}sticker [nama sticker]\``,
-    execute: async (message: Message) => {
+    execute: async (message, client) => {
+
+        const session = client.getSession();
+
+        if (!session || !message.key?.remoteJid) {
+            return;
+        }
 
         try {
+            const name = message.message?.conversation?.split(" ").slice(1).join(" ") || "sticker";
 
-            const name = message.body.split(" ").slice(1).join(" ") || "sticker";
-
-            if (!message.hasMedia) {
-                return message.reply("Pastikan gambar dikirim bersama pesannya");
+            if (!message.message?.imageMessage) {
+                return session.sendMessage(message.key.remoteJid, { 
+                    text: "Kirim gambar dengan caption `!sticker [nama]` untuk membuat sticker" 
+                }, { quoted: message });
             }
 
-            const img = await message.downloadMedia();
+            const buffer = await downloadMediaMessage(message, 'buffer', {});
 
-            fs.writeFileSync('test.mp4', img.data)
+            logger.info(buffer)
 
-
-            if (message.type == 'video') {
-                return message.reply(new MessageMedia("image/png", img.data, img.filename), message.from, {
-                    sendVideoAsGif: true,
-                    sendMediaAsSticker: true,
-                    stickerAuthor: "@ion/iqbalbtr",
-                    stickerName: img.filename?.split(".").slice(-1).toString() || 'sticker'
-                })
+            if (!buffer) {
+                return session.sendMessage(message.key.remoteJid, { 
+                    text: "Gagal mengunduh gambar" 
+                }, { quoted: message });
             }
 
-            if (base64ToImage(img.data).length >= 5 * 1024 * 1024) {
-                return message.reply("Ukuran gambarnya terlalu besar")
+            if (buffer.length >= 5 * 1024 * 1024) {
+                return session.sendMessage(message.key.remoteJid, { 
+                    text: "Ukuran gambar terlalu besar (maksimal 5MB)" 
+                }, { quoted: message });
             }
 
-            if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(img.mimetype)) {
-                return message.reply('Waduh format tidak didukung nih. pastikan format gambar jpge, png, jpg, atau webp');
+            const metadata = await sharp(buffer).metadata();
+
+            if (!metadata.width || !metadata.height) {
+                return session.sendMessage(message.key.remoteJid, { 
+                    text: "Format gambar tidak valid" 
+                }, { quoted: message });
             }
 
-            const metadata = await sharp(base64ToImage(img.data)).metadata();
-            const maxSize = Math.max(metadata.width!, metadata.height!);
+            const maxSize = Math.max(metadata.width, metadata.height);
 
-            const resizedImage = await sharp(base64ToImage(img.data))
+            const resizedImage = await sharp(buffer)
                 .resize({
-                    width: metadata.width! >= metadata.height! ? 256 : undefined,
-                    height: metadata.height! > metadata.width! ? 256 : undefined,
+                    width: metadata.width >= metadata.height ? 256 : undefined,
+                    height: metadata.height > metadata.width ? 256 : undefined,
                     fit: 'contain'
                 })
                 .toFormat('webp', {
                     quality: 85
                 })
                 .extend({
-                    top: Math.max(0, Math.floor((256 - (metadata.height! * 256 / maxSize)) / 2)),
-                    bottom: Math.max(0, Math.floor((256 - (metadata.height! * 256 / maxSize)) / 2)),
-                    left: Math.max(0, Math.floor((256 - (metadata.width! * 256 / maxSize)) / 2)),
-                    right: Math.max(0, Math.floor((256 - (metadata.width! * 256 / maxSize)) / 2)),
+                    top: Math.max(0, Math.floor((256 - (metadata.height * 256 / maxSize)) / 2)),
+                    bottom: Math.max(0, Math.floor((256 - (metadata.height * 256 / maxSize)) / 2)),
+                    left: Math.max(0, Math.floor((256 - (metadata.width * 256 / maxSize)) / 2)),
+                    right: Math.max(0, Math.floor((256 - (metadata.width * 256 / maxSize)) / 2)),
                     background: { r: 0, g: 0, b: 0, alpha: 0 }
                 })
                 .toBuffer();
 
-            const media = new MessageMedia("image/webp", resizedImage.toString('base64'), img.filename)
+            await session.sendMessage(message.key.remoteJid, {
+                sticker: resizedImage
+            }, { quoted: message });
 
-            message.reply(media, message.from, {
-                sendMediaAsSticker: true,
-                stickerAuthor: "@mcc/sticker",
-                stickerName: name
-            })
         } catch (error) {
-            message.reply('Terjadi kesalahan saat mengkonversi gambar')
+            logger.warn("Sticker error:", error);
+            if (session && message.key?.remoteJid) {
+                session.sendMessage(message.key.remoteJid, { 
+                    text: 'Terjadi kesalahan saat mengkonversi gambar' 
+                }, { quoted: message });
+            }
         }
     }
 } as CommandType

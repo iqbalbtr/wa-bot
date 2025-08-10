@@ -1,42 +1,45 @@
-import Tesseract, { createWorker } from "tesseract.js";
-import { Message } from "whatsapp-web.js";
+import { createWorker } from "tesseract.js";
 import { prefix } from "../../shared/constant/env";
-import sharp from 'sharp'
+import sharp from "sharp";
+import { downloadMediaMessage, proto } from "@whiskeysockets/baileys";
+import { CommandType } from "../type/client";
+import logger from "../../shared/lib/logger";
 
-
-function base64ToImage(base64String: string) {
-    const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
-    return Buffer.from(base64Data, 'base64');
-}
-
-
-module.exports = {
+export default {
     name: "img2text",
-    description: "Mngekonversi gambar yang terdapat text menjadi text",
+    description: "Mengonversi gambar yang terdapat text menjadi text",
     usage: `\`${prefix}img2text\``,
-    execute: async (message: Message) => {
+    execute: async (message: proto.IWebMessageInfo, client) => {
+        const session = client.getSession();
+        if (!session || !message.key?.remoteJid) return;
+
         try {
-            const img = await message.downloadMedia()
 
-            if (!img) return message.reply("Pastikan gambar juga dikirim bersama commandnya");
-
-            if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(img.mimetype)) {
-                return message.reply('Waduh format tidak didukung nih. pastikan format gambar jpge, png, jpg, atau webp');
+            if (!message.message?.imageMessage?.mimetype?.startsWith("image")) {
+                await session.sendMessage(message.key.remoteJid, { text: "Pastikan gambar juga dikirim bersama commandnya" }, { quoted: message });
+                return;
             }
 
-            const worker = await createWorker()
+            const buffer = await downloadMediaMessage(message, "buffer", {});
+            if (!buffer) {
+                await session.sendMessage(message.key.remoteJid, { text: "Pastikan gambar juga dikirim bersama commandnya" }, { quoted: message });
+                return;
+            }
 
-            const converting = await sharp(base64ToImage(img.data))
-                .grayscale() 
-                .normalize() 
+            const worker = await createWorker();
+
+            const converting = await sharp(buffer)
+                .grayscale()
+                .normalize()
                 .toBuffer();
 
-            const text = await worker.recognize(converting)
+            const text = await worker.recognize(converting);
 
-            message.reply(text.data.text)
+            await session.sendMessage(message.key.remoteJid, { text: text.data.text }, { quoted: message });
 
         } catch (error) {
-            return message.reply("Terjadi masalah saat mengkonversi")
+            await session.sendMessage(message.key.remoteJid, { text: "Terjadi masalah saat mengkonversi" }, { quoted: message });
+            logger.warn("Img2Text error:", error);
         }
     }
-}
+} as CommandType

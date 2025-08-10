@@ -1,16 +1,27 @@
-import { MessageMedia } from "whatsapp-web.js";
 import { devId, prefix } from "../../shared/constant/env";
 import { CommandType } from "../type/client";
-import { createSessionUser, generateSessionFooterContent } from "../lib/session";
+import { generateSessionFooterContent } from "../lib/session";
+import { downloadMediaMessage } from "@whiskeysockets/baileys";
+import logger from "../../shared/lib/logger";
 
-module.exports = {
+export default {
     name: "req",
+    usage: `${prefix}req`,
     description: "Kirim masukan ke developer",
     async execute(message, client) {
+
+        const session = client.getSession();
+
         let content = 'Pesan akan diforward ke developer\nHarap tidak melakukan spam\n'
         content += generateSessionFooterContent('req');
-        createSessionUser(message, 'req')
-        message.reply(content)
+        client.userActiveSession.addUserSession(message, 'req')
+
+
+        session?.sendMessage((message.key.remoteJid || ""), {
+            text: content
+        }, {
+            quoted: message
+        });
     },
     commands: [
         {
@@ -18,30 +29,105 @@ module.exports = {
             description: `${prefix}bug [pesan] | Kirim pesan jika menemukan bug, anda bisa menyertakan gambar jika ada`,
             execute: async (message, client) => {
 
-                const media = await message.downloadMedia();
+                const session = client.getSession();
+                if (!session || !message.key?.remoteJid) return;
 
-                let content = `Type : Bug\nPesan dari : ${message.from}\nIsi : ${message.body.split('/bug')[1]}`;
+                try {
+                    let media = null;
+                    let messageText = message.message?.conversation || "";
 
-                const body = media ? new MessageMedia(media.mimetype, media.data, media.filename) : content;
+                    if (message.message?.imageMessage || message.message?.documentMessage) {
+                        media = await downloadMediaMessage(message, 'buffer', {});
+                    }
 
-                client.sendMessage(devId, body, media && { caption: content })
+                    const userJid = message.key.remoteJid;
+                    const bugContent = messageText.split('/bug')[1]?.trim() || "Tidak ada deskripsi";
 
-                message.reply('Pesan Berhasil dikirim')
+                    let content = `Type : Bug\nPesan dari : ${userJid}\nIsi : ${bugContent}`;
+
+                    if (media) {
+                        if (message.message?.imageMessage) {
+                            await session.sendMessage(devId, {
+                                image: media,
+                                caption: content
+                            });
+                        } else if (message.message?.documentMessage) {
+                            await session.sendMessage(devId, {
+                                document: media,
+                                caption: content,
+                                fileName: message.message.documentMessage.fileName || "bug_report",
+                                mimetype: message.message.documentMessage.mimetype || "application/octet-stream"
+                            });
+                        }
+                    } else {
+                        await session.sendMessage(devId, { text: content });
+                    }
+
+                    await session.sendMessage(userJid, {
+                        text: 'Laporan bug berhasil dikirim ke developer'
+                    }, { quoted: message });
+
+                } catch (error) {
+                    logger.warn("Req error:", error);
+                    if (session && message.key?.remoteJid) {
+                        await session.sendMessage(message.key.remoteJid, {
+                            text: 'Gagal mengirim laporan bug'
+                        }, { quoted: message });
+                    }
+                }
             }
         },
         {
             name: "/req",
-            description: `${prefix}req [pesan] |Kirim pesan jika memiliki masukan`,
+            description: `${prefix}req [pesan] | Kirim pesan jika memiliki masukan`,
             execute: async (message, client) => {
-                const media = await message.downloadMedia();
 
-                let content = `Type : Masukan\nPesan dari : ${message.from}\nIsi : ${message.body.split('/req')[1]}`;
+                const session = client.getSession();
+                if (!session || !message.key?.remoteJid) return;
 
-                const body = media ? new MessageMedia(media.mimetype, media.data, media.filename) : content;
+                try {
+                    let media = null;
+                    let messageText = message.message?.conversation || "";
 
-                client.sendMessage(devId, body, media && { caption: content })
+                    if (message.message?.imageMessage || message.message?.documentMessage) {
+                        media = await downloadMediaMessage(message, 'buffer', {});
+                    }
 
-                message.reply('Pesan Berhasil dikirim')
+                    const userJid = message.key.remoteJid;
+                    const reqContent = messageText.split('/req')[1]?.trim() || "Tidak ada masukan";
+
+                    let content = `Type : Masukan\nPesan dari : ${userJid}\nIsi : ${reqContent}`;
+
+                    if (media) {
+                        if (message.message?.imageMessage) {
+                            await session.sendMessage(devId, {
+                                image: media,
+                                caption: content
+                            });
+                        } else if (message.message?.documentMessage) {
+                            await session.sendMessage(devId, {
+                                document: media,
+                                caption: content,
+                                fileName: message.message.documentMessage.fileName || "user_feedback",
+                                mimetype: message.message.documentMessage.mimetype || "application/octet-stream"
+                            });
+                        }
+                    } else {
+                        await session.sendMessage(devId, { text: content });
+                    }
+
+                    await session.sendMessage(userJid, {
+                        text: 'Masukan berhasil dikirim ke developer'
+                    }, { quoted: message });
+
+                } catch (error) {
+                    logger.warn("Req error:", error);
+                    if (session && message.key?.remoteJid) {
+                        await session.sendMessage(message.key.remoteJid, {
+                            text: 'Gagal mengirim masukan'
+                        }, { quoted: message });
+                    }
+                }
             }
         }
     ]

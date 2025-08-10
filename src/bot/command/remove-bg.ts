@@ -1,36 +1,36 @@
-import { Message, MessageMedia } from "whatsapp-web.js";
 import { removeBackground } from "@imgly/background-removal-node";
-import * as fs from 'fs'
 import { prefix } from "../../shared/constant/env";
 import { saveFileToTemp } from "../../shared/lib/storage";
-import { ClientType } from "../type/client";
+import { downloadMediaMessage, proto } from "@whiskeysockets/baileys";
+import * as fs from "fs";
+import { CommandType } from "../type/client";
+import logger from "../../shared/lib/logger";
 
-function base64ToImage(base64String: string) {
-  const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
-  return Buffer.from(base64Data, 'base64');
-}
-
-module.exports = {
+export default {
   name: "rem-bg",
   description: "Menghapus latar belakang dari gambar yang dikirim",
   usage: `\`${prefix}rem-bg\``,
-  execute: async (message: Message, client: ClientType) => {
-    const img = await message.downloadMedia();
-
-    if (!img) return message.reply("Pastikan gambarnya juga dikirim bersama commandnya");
-
-    if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(img.mimetype)) {
-      return message.reply('Waduh format tidak didukung nih. pastikan format gambar jpge, png, jpg, atau webp');
-    }
-
-    if (base64ToImage(img.data).length >= 7 * 1024 * 1024) {
-      return message.reply("Ukuran gambar terlalu besar")
-    }
-
-    const { outputFolderFile, outputFolder, filename } = saveFileToTemp(base64ToImage(img.data), ['img', 'rem-bg'], '.png')
+  execute: async (message: proto.IWebMessageInfo, client) => {
+    const session = client.getSession();
+    if (!session || !message.key?.remoteJid) return;
 
     try {
+      // Download image from message
+      const buffer = await downloadMediaMessage(message, "buffer", {});
+      if (!buffer) {
+        await session.sendMessage(message.key.remoteJid, { text: "Pastikan gambarnya juga dikirim bersama commandnya" }, { quoted: message });
+        return;
+      }
 
+      if (buffer.length >= 7 * 1024 * 1024) {
+        await session.sendMessage(message.key.remoteJid, { text: "Ukuran gambar terlalu besar" }, { quoted: message });
+        return;
+      }
+
+      // Save temp file
+      const { outputFolderFile, outputFolder, filename } = saveFileToTemp(new Uint8Array(buffer), ['img', 'rem-bg'], '.png');
+
+      // Remove background
       const removeBgBuffer = await removeBackground(outputFolderFile, {
         output: {
           format: 'image/png',
@@ -38,16 +38,18 @@ module.exports = {
         }
       });
 
-      const media = new MessageMedia("image/png", Buffer.from(await removeBgBuffer.arrayBuffer()).toString('base64'), filename);
+      // Send result as document
+      await session.sendMessage(message.key.remoteJid, {
+        document: Buffer.from(await removeBgBuffer.arrayBuffer()),
+        mimetype: "image/png",
+        fileName: filename,
+        caption: "Berhasil menghapus background"
+      }, { quoted: message });
 
-      message.reply(media, message.from, {
-        sendMediaAsDocument: true
-      })
-
-      fs.rmSync(outputFolder, { recursive: true })
+      fs.rmSync(outputFolder, { recursive: true });
     } catch (error) {
-      message.reply('Terjadi error saat mengubah gambar')
-      console.error(error);
-    } 
+      await session.sendMessage(message.key.remoteJid, { text: "Terjadi error saat mengubah gambar" }, { quoted: message });
+      logger.error("Remove background error:", error);
+    }
   }
-};
+} as CommandType

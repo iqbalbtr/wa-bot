@@ -1,6 +1,7 @@
-import { Message } from "whatsapp-web.js";
-import { ClientType } from "../type/client";
 import * as os from "os"
+import { CommandType } from "../type/client";
+import { prefix } from "../../shared/constant/env";
+import logger from "../../shared/lib/logger";
 
 function getTimeFormat(from: number) {
     const uptimeMilliseconds = Date.now() - from;
@@ -12,10 +13,11 @@ function getTimeFormat(from: number) {
     return uptimeFormatted
 }
 
-module.exports = {
+export default {
     name: "status",
+    usage: `${prefix}converter`,
     description: "Menampilkan status bot, termasuk uptime dan penggunaan sumber daya.",
-    execute: async (message: Message, client: ClientType) => {
+    execute: async (message, client) => {
         try {
             const totalMem = os.totalmem();
             const freeMem = os.freemem();
@@ -40,13 +42,15 @@ module.exports = {
 
             content += `- CPU Usage: ${cpuUsagePercentage.toFixed(2)}%`;
             content += `\n- Memory Usage: ${memoryUsage.toFixed(2)}% (${(usedMem / 1024 / 1024).toFixed(2)} MB dari ${(totalMem / 1024 / 1024).toFixed(2)} MB)`;
-            content += `\n- Uptime bot: ${getTimeFormat(client.limiter.startTime)}`;
-            content += `\n- Ongoing Process: ${client.limiter.users.size}`;
-            content += `\n- Total Request: ${client.limiter.userTotal}`;
+            content += `\n- Uptime bot: ${getTimeFormat(client.getStartTime() || 0)}`;
+            content += `\n- Ongoing Process: ${client.limiter.getUserCount()}`;
+            content += `\n- Total Request: ${client.limiter.getCountRequest()}`;
 
-            message.reply(content);
+            client.message.sendMessage(message.key.remoteJid || "", {
+                text: content
+            }, { quoted: message });
         } catch (error) {
-
+            logger.warn("Status error:", error);
         }
     }
-}
+} as CommandType
