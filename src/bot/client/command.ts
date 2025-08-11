@@ -1,5 +1,5 @@
 import { BaileysEventMap, proto } from "@whiskeysockets/baileys";
-import { Client, CommandSessionContentType, CommandType, SessionUserType } from "../type/client";
+import { Client, CommandType, PayloadMessage, SessionUserType } from "../type/client";
 import path from "path";
 import fs from "fs";
 import { extractCommandFromPrefix, extractContactId, extractLid, extractMessageFromGroupMessage, middlewareApplier } from "../lib/util";
@@ -42,8 +42,10 @@ export class ClientCommand {
                 this.client.logger.warn(`Command directory not found: ${baseDir}`);
                 return;
             }
-            const commandFiles = fs.readdirSync(baseDir).filter(file => file.endsWith('.js'));
+
+            const commandFiles = fs.readdirSync(baseDir).filter(file => file.endsWith('.js') || file.endsWith('.ts'));
             let total = 0;
+
             for (const file of commandFiles) {
                 const fullPath = path.join(baseDir, file);
                 let mod: any;
@@ -71,6 +73,19 @@ export class ClientCommand {
         }
     }
 
+    private normalizeAttachment(msg: proto.IMessage) {
+        if (msg?.documentWithCaptionMessage?.message) {
+            const docMsg = msg.documentWithCaptionMessage.message.documentMessage;
+            if (docMsg) {
+                msg.documentMessage = docMsg;
+                if (docMsg.caption) {
+                    msg.conversation = docMsg.caption;
+                }
+            }
+            delete msg.documentWithCaptionMessage;
+        }
+        return msg!;
+    }
 
     public async handleCommandEvent(data: BaileysEventMap["messages.upsert"]): Promise<void> {
         const msg = data.messages[0];
@@ -80,12 +95,7 @@ export class ClientCommand {
             return;
         }
 
-        msg.message = { ...msg.message, ...this.parseMessageEphemeral(msg) };
-
         const from = msg.key.remoteJid.endsWith("@g.us") ? msg.key.participant || "" : msg.key.remoteJid || "";
-        const text = extractMessageFromGroupMessage(this.getMessageText(msg))
-
-        msg.message.conversation = text;
 
         try {
             await middlewareApplier(
@@ -102,38 +112,57 @@ export class ClientCommand {
 
 
     private async processMessage(msg: proto.IWebMessageInfo, from: string) {
+
         const userInSession = this.client.userActiveSession.getUserSession(from);
+        const message = this.normalizeAttachment({ ...msg.message, ...this.parseMessageEphemeral(msg) });
+        const text = extractMessageFromGroupMessage(this.getMessageText(msg))
+
+        const payload: PayloadMessage = {
+            from,
+            text,
+            timestamp: Date.now(),
+            message,
+            isGroup: msg.key.remoteJid?.endsWith("@g.us") || false,
+            metionsIds: this.extractMentionedJids(msg)
+        }
+
+        console.log(JSON.stringify(payload, null, 2));
+
 
         if (userInSession) {
-            this.handleSessionUser(msg, userInSession);
+            this.handleSessionUser(payload, msg, userInSession);
         } else {
-            this.handleNormalUser(msg);
+            this.handleNormalUser(payload, msg);
         }
     }
 
-    private handleSessionUser(msg: proto.IWebMessageInfo, userInSession: SessionUserType) {
+    private handleSessionUser(payload: PayloadMessage, msg: proto.IWebMessageInfo, userInSession: SessionUserType) {
 
-        if (!this.shouldProcess(msg)) return;
+        if (!this.shouldProcess(payload)) return;
 
-        const commandName = extractCommandFromPrefix(msg.message?.conversation || "") || "";
+        const commandName = extractCommandFromPrefix(payload.text || "") || "";
 
         if (this.handleSessionExitOrInvalid(msg, commandName, userInSession)) {
-            const sessionCommand = this.findSessionCommand(commandName, userInSession.session.commands);
-            sessionCommand?.execute(msg, this.client, userInSession.data);
+            let sessionCommand = userInSession.session.commands?.find(c => c.name === commandName);
+
+            if (sessionCommand) {
+                sessionCommand.execute(msg, this.client, payload, userInSession.data);
+            } else {
+                this.client.defaultMessageReply(msg, payload);
+            }
         }
     }
 
-    private handleNormalUser(msg: proto.IWebMessageInfo) {
-        if (!this.shouldProcess(msg)) return;
+    private handleNormalUser(payload: PayloadMessage, msg: proto.IWebMessageInfo) {
+        if (!this.shouldProcess(payload)) return;
 
-        const commandName = extractCommandFromPrefix(msg.message?.conversation || "");
+        const commandName = extractCommandFromPrefix(payload.text || "");
         const command = this.getCommand(commandName || "");
 
         if (command) {
-            command.execute(msg, this.client);
+            command.execute(msg, this.client, payload);
         } else {
-
-            this.client.defaultMessageReply(msg);
+            this.client.defaultMessageReply(msg, payload);
         }
     }
 
@@ -170,6 +199,16 @@ export class ClientCommand {
             return msg.extendedTextMessage.contextInfo.mentionedJid;
         }
 
+        if (msg.documentWithCaptionMessage?.message) {
+            const subMsg = msg.documentWithCaptionMessage.message;
+            for (const key of Object.keys(subMsg)) {
+                const contextInfo = (subMsg as any)[key]?.contextInfo;
+                if (contextInfo?.mentionedJid) {
+                    return contextInfo.mentionedJid;
+                }
+            }
+        }
+
         for (const key of Object.keys(msg)) {
             const mediaMsg = (msg as any)[key];
             if (mediaMsg?.contextInfo?.mentionedJid) {
@@ -180,14 +219,14 @@ export class ClientCommand {
         return [];
     }
 
-    private shouldProcess(msg: proto.IWebMessageInfo): boolean {
-        const isGroup = msg.key.remoteJid?.endsWith("@g.us") || false;
-        if (!isGroup) return true;
+    private shouldProcess(payload: PayloadMessage): boolean {
+
+        if (!payload.isGroup) return true;
 
         let isGroupAccepted = false;
         const clientId = this.client.getInfoClient()
 
-        this.extractMentionedJids(msg).forEach(txt => {
+        payload.metionsIds?.forEach(txt => {
 
             if (isGroupAccepted) return;
 
@@ -209,33 +248,54 @@ export class ClientCommand {
 
         if (commandName.toLowerCase() === '/exit') {
             this.client.userActiveSession.removeUserSession(msg);
-            this.client.getSession()?.sendMessage(msg.key.remoteJid!, { text: `Sesi *${session.session.name}* telah diakhiri.` }, { quoted: msg });
+            this.client.getSession()?.sendMessage(msg.key.remoteJid!, { text: `Sesi *${session.session.name}* telah diakhiri.` });
             return false;
+        }
+
+        if (commandName.toLowerCase() === '/back' && session.current.length > 1) {
+            this.client.userActiveSession.backUserSession(msg, 1);
+
+            let command = null;
+            for (const name of session.current.slice(-1)) {
+                if (!command) {
+                    command = this.client.command.getCommand(name);
+                } else {
+                    command = command.commands?.find(c => c.name === name);
+                }
+            }
+
+            session.session = command!;
+
+            const helpText = this.buildSessionHelpText(command!, (session.current.length - 1) > 1);
+            this.client.getSession()?.sendMessage(msg.key.remoteJid!, { text: helpText });
+            return false
         }
 
         const isValidCommand = commands.some(c => c.name === commandName);
         if (!isValidCommand) {
-            const helpText = this.buildSessionHelpText(session.session.name);
-            this.client.getSession()?.sendMessage(msg.key.remoteJid!, { text: helpText }, { quoted: msg });
+            const helpText = this.buildSessionHelpText(session.session, session.current.length > 1);
+            this.client.getSession()?.sendMessage(msg.key.remoteJid!, { text: helpText });
             return false;
         }
 
         return true;
     }
 
-    private buildSessionHelpText(sessionName: string): string {
-        const mainCommand = this.getCommand(sessionName);
-        if (!mainCommand?.commands) return 'Command sesi tidak ditemukan.';
+    private buildSessionHelpText(command: CommandType, isBack: boolean): string {
 
         let content = 'Perintah tidak valid. Gunakan salah satu perintah berikut:';
-        mainCommand.commands.forEach(cmd => {
+
+        if (!command.commands || !command.commands.length) {
+            return "Perintah tidak dikenali silakan *`/exit`* ";
+        }
+
+        command.commands?.forEach(cmd => {
             content += `\n- *\`${cmd.name}\`* ${cmd.description}`;
         });
+        if (isBack) {
+            content += "\n- *`/back`* untuk kembali ke sesi sebelumnya.";
+        }
         content += "\n- *`/exit`* untuk keluar dari sesi ini.";
         return content;
-    }
-
-    private findSessionCommand(commandName: string, sessionCommands: CommandSessionContentType[] = []): CommandSessionContentType | undefined {
-        return sessionCommands.find(cmd => cmd.name === commandName);
     }
 }

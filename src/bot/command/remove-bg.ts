@@ -1,7 +1,7 @@
 import { removeBackground } from "@imgly/background-removal-node";
 import { prefix } from "../../shared/constant/env";
 import { saveFileToTemp } from "../../shared/lib/storage";
-import { downloadMediaMessage, proto } from "@whiskeysockets/baileys";
+import { downloadMediaMessage } from "@whiskeysockets/baileys";
 import * as fs from "fs";
 import { CommandType } from "../type/client";
 import logger from "../../shared/lib/logger";
@@ -10,7 +10,7 @@ export default {
   name: "rem-bg",
   description: "Menghapus latar belakang dari gambar yang dikirim",
   usage: `\`${prefix}rem-bg\``,
-  execute: async (message: proto.IWebMessageInfo, client) => {
+  execute: async (message, client) => {
     const session = client.getSession();
     if (!session || !message.key?.remoteJid) return;
 
@@ -18,12 +18,12 @@ export default {
       // Download image from message
       const buffer = await downloadMediaMessage(message, "buffer", {});
       if (!buffer) {
-        await session.sendMessage(message.key.remoteJid, { text: "Pastikan gambarnya juga dikirim bersama commandnya" }, { quoted: message });
+        await session.sendMessage(message.key.remoteJid, { text: "Pastikan gambarnya juga dikirim bersama commandnya" });
         return;
       }
 
       if (buffer.length >= 7 * 1024 * 1024) {
-        await session.sendMessage(message.key.remoteJid, { text: "Ukuran gambar terlalu besar" }, { quoted: message });
+        await session.sendMessage(message.key.remoteJid, { text: "Ukuran gambar terlalu besar" });
         return;
       }
 
@@ -44,11 +44,11 @@ export default {
         mimetype: "image/png",
         fileName: filename,
         caption: "Berhasil menghapus background"
-      }, { quoted: message });
+      });
 
       fs.rmSync(outputFolder, { recursive: true });
     } catch (error) {
-      await session.sendMessage(message.key.remoteJid, { text: "Terjadi error saat mengubah gambar" }, { quoted: message });
+      await session.sendMessage(message.key.remoteJid, { text: "Terjadi error saat mengubah gambar" });
       logger.error("Remove background error:", error);
     }
   }

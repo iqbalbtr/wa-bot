@@ -24,15 +24,13 @@ export default {
         client.userActiveSession.addUserSession(message, 'help', { page })
         session?.sendMessage((message.key.remoteJid || ""), {
             text: content
-        }, {
-            quoted: message
         });
     },
     commands: [
         {
             name: "/next",
             description: "Halaman berikutnya",
-            execute: (message, client, data) => {
+            execute: (message, client, payload, data) => {
 
                 const session = client.getSession()
 
@@ -44,8 +42,6 @@ export default {
                 if (page >= totalPage) {
                     return session?.sendMessage((message.key.remoteJid || ""), {
                         text: "Halaman mencapai batas"
-                    }, {
-                        quoted: message
                     });
                 }
 
@@ -55,15 +51,13 @@ export default {
                 client.userActiveSession.addUserSession(message, 'help', { page })
                 return session?.sendMessage((message.key.remoteJid || ""), {
                     text: content
-                }, {
-                    quoted: message
                 });
             }
         },
         {
             name: "/prev",
             description: "Kembali ke halaman sebelumnya",
-            execute: (message, client, data) => {
+            execute: (message, client, payload, data) => {
 
                 const session = client.getSession()
 
@@ -75,8 +69,6 @@ export default {
                 if (page == 1) {
                     return session?.sendMessage((message.key.remoteJid || ""), {
                         text: "Halaman mencapai batas"
-                    }, {
-                        quoted: message
                     });
                 }
 
@@ -86,8 +78,6 @@ export default {
                 client.userActiveSession.addUserSession(message, 'help', { page })
                 return session?.sendMessage((message.key.remoteJid || ""), {
                     text: content
-                }, {
-                    quoted: message
                 });
             }
         }

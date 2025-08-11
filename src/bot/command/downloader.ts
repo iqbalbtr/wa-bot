@@ -2,7 +2,6 @@ import Tiktok from '@tobyg74/tiktok-api-dl';
 import path from "path";
 import fs from "fs";
 import { childProcessCallback } from "../../shared/lib/util";
-import { proto } from "@whiskeysockets/baileys";
 import { CommandType } from '../type/client';
 import { generateSessionFooterContent } from '../lib/session';
 import logger from '../../shared/lib/logger';
@@ -10,47 +9,47 @@ import logger from '../../shared/lib/logger';
 export default {
     name: "downloader",
     description: "Alat pengunduh video media sosial",
-    execute: async (message: proto.IWebMessageInfo, client) => {
+    execute: async (message, client) => {
         const session = client.getSession();
         if (!session || !message.key?.remoteJid) return;
         let content = generateSessionFooterContent('downloader');
         client.userActiveSession.addUserSession(message, 'downloader');
-        await session.sendMessage(message.key.remoteJid, { text: content }, { quoted: message });
+        await session.sendMessage(message.key.remoteJid, { text: content });
     },
     commands: [
         {
             name: '/tiktok',
             description: `Downloader video dari tiktok pastikan setelah command kirim juga linknya`,
-            execute: async (message: proto.IWebMessageInfo, client) => {
+            execute: async (message, client, payload) => {
                 const session = client.getSession();
                 if (!session || !message.key?.remoteJid) return;
-                const link = message.message?.conversation?.split(" ")[1];
+                const link = payload.text.split(" ")[1];
                 if (!link) {
-                    await session.sendMessage(message.key.remoteJid, { text: 'Link tidak ditemukan' }, { quoted: message });
+                    await session.sendMessage(message.key.remoteJid, { text: 'Link tidak ditemukan' });
                     return;
                 }
                 try {
                     const res = await Tiktok.Downloader(link, { version: "v3" });
                     if (!res.result?.videoHD) {
-                        await session.sendMessage(message.key.remoteJid, { text: "Gagal mendapatkan video. Coba gunakan link lain." }, { quoted: message });
+                        await session.sendMessage(message.key.remoteJid, { text: "Gagal mendapatkan video. Coba gunakan link lain." });
                         return;
                     }
-                    await session.sendMessage(message.key.remoteJid, { text: 'Link unduh : ' + res.result.videoHD }, { quoted: message });
+                    await session.sendMessage(message.key.remoteJid, { text: 'Link unduh : ' + res.result.videoHD });
                 } catch (error) {
                     logger.warn("Downloader error:", error);
-                    await session.sendMessage(message.key.remoteJid, { text: "Terjadi kesalahan saat mengunduh video." }, { quoted: message });
+                    await session.sendMessage(message.key.remoteJid, { text: "Terjadi kesalahan saat mengunduh video." });
                 }
             },
         },
         {
             name: "/yt-video",
             description: "Downloader video dari youtube, pastikan setelah command kirim juga linknya",
-            execute: async (message: proto.IWebMessageInfo, client) => {
+            execute: async (message, client, payload) => {
                 const session = client.getSession();
                 if (!session || !message.key?.remoteJid) return;
-                const link = message.message?.conversation?.split(" ")[1];
+                const link = payload.text.split(" ")[1];
                 if (!link) {
-                    await session.sendMessage(message.key.remoteJid, { text: 'Link tidak ditemukan' }, { quoted: message });
+                    await session.sendMessage(message.key.remoteJid, { text: 'Link tidak ditemukan' });
                     return;
                 }
                 try {
@@ -66,13 +65,13 @@ export default {
                             mimetype: "video/mp4",
                             fileName: path.basename(fileName),
                             caption: "Berhasil mengunduh video"
-                        }, { quoted: message });
+                        });
                     } else {
-                        await session.sendMessage(message.key.remoteJid, { text: "Gagal menemukan file hasil unduhan." }, { quoted: message });
+                        await session.sendMessage(message.key.remoteJid, { text: "Gagal menemukan file hasil unduhan." });
                     }
                 } catch (error) {
                     logger.warn("Downloader error:", error);
-                    await session.sendMessage(message.key.remoteJid, { text: "Terjadi kesalahan saat mengunduh video." }, { quoted: message });
+                    await session.sendMessage(message.key.remoteJid, { text: "Terjadi kesalahan saat mengunduh video." });
                 }
             },
         }

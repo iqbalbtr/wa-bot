@@ -48,7 +48,7 @@ export default {
 
             client.message.sendMessage(message.key.remoteJid || "", {
                 text: content
-            }, { quoted: message });
+            });
         } catch (error) {
             logger.warn("Status error:", error);
         }

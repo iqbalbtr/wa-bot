@@ -12,7 +12,7 @@ import P from "pino";
 import logger from "../../shared/lib/logger";
 import path from "path";
 import fs from "fs";
-import { ClientEvent } from "../type/client";
+import { ClientEvent, PayloadMessage } from "../type/client";
 import didYouMean from "didyoumean";
 import { ClientLimiter } from "./limiter";
 import { ClientCommand } from "./command";
@@ -67,7 +67,7 @@ export class WhatsappClient {
             msgRetryCounterCache: this.msgRetryCounterCache as CacheStore,
             generateHighQualityLinkPreview: true,
             cachedGroupMetadata: async (jid) => this.groupCache.get(jid),
-        });        
+        });
 
         this.session.ev.on('creds.update', saveCreds);
         this.initializeEvents()
@@ -174,13 +174,13 @@ export class WhatsappClient {
     /**
      * Mengirim balasan default jika command tidak ditemukan.
      */
-    public async defaultMessageReply(message: proto.IWebMessageInfo): Promise<void> {
+    public async defaultMessageReply(message: proto.IWebMessageInfo, payload: PayloadMessage): Promise<void> {
 
         const session = this.getSession();
         const remoteJid = message.key?.remoteJid;
         if (!session || !remoteJid) return;
 
-        const commandText = message.message?.conversation?.split(' ')[0] || "";
+        const commandText = payload.text.split(' ')[0] || "";
         if (!commandText) return;
 
         const prefix = this.getPrefix();
@@ -197,7 +197,7 @@ export class WhatsappClient {
             replyText = `Mungkin yang Anda maksud adalah: *${prefix}${suggestion}*`;
         }
 
-        await session.sendMessage(remoteJid, { text: replyText }, {quoted: message});
+        await session.sendMessage(remoteJid, { text: replyText });
     }
 
     public getStartTime(): number {

@@ -1,27 +1,40 @@
-import { proto } from "@whiskeysockets/baileys";
 import client from "../..";
-import { prefix } from "../../../shared/constant/env";
-import { Client, CommandSessionContentType, SessionUserType } from "../../type/client";
-import { extractContactId } from "../util";
+import { CommandType } from "../../type/client";
 
-export function generateSessionFooterContent(name: string) {
-    const session = client.command.getCommand(name);
+
+export function generateSessionFooterContent(...names: string[]) {
+
+    let session: CommandType | undefined = undefined
+
+    for (const name of names) {
+        if (!session) {
+            session = client.command.getCommand(name);
+        } else {
+            session = session.commands?.find((fo) => fo.name == name);
+        }
+    }
 
     if (!session?.commands) {
         return ''
     }
 
-    let content = '\nGunakan command berikut'
-    session.commands.forEach((text) => {
-        content += `\n- ` + "*`" + `${text.name}` + "`*" + ` ${text.description}`
-    })
+    let content = 'Gunakan command berikut'
+    if (session.commands) {
+        session.commands.forEach((text) => {
+            content += `\n- ` + "*`" + `${text.name}` + "`*" + ` ${text.description}`
+        })
+    }
+
+    if (names.length > 1) {
+        content += "\n- *`/back`* untuk kembali"
+    }
 
     content += "\n- *`/exit`* untuk keluar"
 
     return content
 }
 
-export function handleSessionCommand(command: string, sessions: CommandSessionContentType[]) {
+export function handleSessionCommand(command: string, sessions: CommandType[]) {
 
     const commandIsExist = sessions.find((fo) => fo.name == command);
 
