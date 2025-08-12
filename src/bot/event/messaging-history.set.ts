@@ -4,6 +4,6 @@ export default {
     event: "messaging-history.set",
     listener: async (e, client) => {
         const {contacts} = e
-        client.contact.setContact(contacts)
+        client.contactManager.setContacts(contacts)
     }
 } as ClientEvent;

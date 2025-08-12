@@ -8,11 +8,9 @@ export default {
     usage: `\`${prefix}help\``,
     execute(message, client) {
 
-        const session = client.getSession()
-
         const limit = 5
         const page = 1;
-        const totalItem = client.command.getCommandCount();
+        const totalItem = client.commandManager.getCommandCount();
         const totalPage = Math.ceil(totalItem / limit)
 
         let content = '';
@@ -21,8 +19,8 @@ export default {
 
         content += generateSessionFooterContent('help')
 
-        client.userActiveSession.addUserSession(message, 'help', { page })
-        session?.sendMessage((message.key.remoteJid || ""), {
+        client.sessionManager.startOrAdvanceSession(message, 'help', { page })
+        client.messageClient.sendMessage((message.key.remoteJid || ""), {
             text: content
         });
     },
@@ -32,15 +30,13 @@ export default {
             description: "Halaman berikutnya",
             execute: (message, client, payload, data) => {
 
-                const session = client.getSession()
-
                 const limit = 5
-                const totalItem = client.command.getCommandCount();
+                const totalItem = client.commandManager.getCommandCount();
                 const totalPage = Math.ceil(totalItem / limit)
                 let page = data.page;
 
                 if (page >= totalPage) {
-                    return session?.sendMessage((message.key.remoteJid || ""), {
+                    return client.messageClient.sendMessage((message.key.remoteJid || ""), {
                         text: "Halaman mencapai batas"
                     });
                 }
@@ -48,8 +44,8 @@ export default {
                 let content = getDataHelpWithPagination(client, ++page, limit, totalPage);
                 content += generateSessionFooterContent('help')
 
-                client.userActiveSession.addUserSession(message, 'help', { page })
-                return session?.sendMessage((message.key.remoteJid || ""), {
+                client.sessionManager.updateSessionData(message, { page })
+                return client.messageClient.sendMessage((message.key.remoteJid || ""), {
                     text: content
                 });
             }
@@ -59,15 +55,13 @@ export default {
             description: "Kembali ke halaman sebelumnya",
             execute: (message, client, payload, data) => {
 
-                const session = client.getSession()
-
                 const limit = 5
-                const totalItem = client.command.getCommandCount();
+                const totalItem = client.commandManager.getCommandCount();
                 const totalPage = Math.ceil(totalItem / limit)
                 let page = data.page;
 
                 if (page == 1) {
-                    return session?.sendMessage((message.key.remoteJid || ""), {
+                    return client.messageClient.sendMessage((message.key.remoteJid || ""), {
                         text: "Halaman mencapai batas"
                     });
                 }
@@ -75,8 +69,8 @@ export default {
                 let content = getDataHelpWithPagination(client, --page, limit, totalPage);
                 content += generateSessionFooterContent('help')
 
-                client.userActiveSession.addUserSession(message, 'help', { page })
-                return session?.sendMessage((message.key.remoteJid || ""), {
+                client.sessionManager.updateSessionData(message, { page })
+                return client.messageClient.sendMessage((message.key.remoteJid || ""), {
                     text: content
                 });
             }
@@ -88,7 +82,7 @@ export default {
 function getDataHelpWithPagination(client: Client, page: number, limit: number, totalPage: number) {
 
     const skip = (page - 1) * limit
-    const allCommand = [...client.command.getCommands()].slice(skip, skip + limit);
+    const allCommand = [...client.commandManager.getAllCommands()].slice(skip, skip + limit);
 
     let content = `Daftar Perintah\n\nHal : ${page}\nTotal Hal : ${totalPage}`;
 

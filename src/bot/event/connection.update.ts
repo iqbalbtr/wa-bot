@@ -1,54 +1,65 @@
 import { Boom } from '@hapi/boom';
-import { DisconnectReason } from '@whiskeysockets/baileys';
+import { ConnectionState, DisconnectReason } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
-import { ClientEvent } from '../type/client';
-import logger from '../../shared/lib/logger';
-import type { WhatsappClient } from '../client/whatsaap';
+import type { ClientEvent } from '../type/client';
+import type { WhatsappClient } from '../core/whatsaap';
 
-
+/**
+ * Menangani logika saat koneksi WhatsApp berhasil terbuka sepenuhnya.
+ * @param client Instance WhatsappClient.
+ */
 async function handleConnectionOpen(client: WhatsappClient): Promise<void> {
+    const session = client.getSession();
+    if (!session) return;
 
-    const session = client.getSession()
-
-    client.startTime = Date.now();
     client.logger.info("✅ Connection established successfully.");
 
     try {
-        await client.message.initializeMessageStore(client);
 
-        const groupMetadata = await session?.groupFetchAllParticipating()
-
-        logger.info("Fetched & inserting group metadata");
-        for (const group in groupMetadata) {
-            client.groupCache.set(group, groupMetadata[group]);
+        const groupMetadata = await session.groupFetchAllParticipating();
+        client.logger.info("Fetching and caching group metadata...");
+        for (const jid in groupMetadata) {
+            client.groupCache.set(jid, groupMetadata[jid]);
         }
+        client.logger.info(`Cached metadata for ${Object.keys(groupMetadata).length} groups.`);
 
     } catch (error) {
-        client.logger.error("❌ Failed during post-connection initialization:", error);
+        client.logger.error("❌ Failed during post-connection setup:", error);
     }
 }
 
+/**
+ * Menangani logika saat koneksi WhatsApp terputus.
+ * @param client Instance WhatsappClient.
+ * @param lastDisconnect Objek yang berisi informasi tentang alasan diskoneksi.
+ */
+async function handleConnectionClose(client: WhatsappClient, lastDisconnect: ConnectionState['lastDisconnect']): Promise<void> {
+    const error = lastDisconnect?.error;
+    const statusCode = (error instanceof Boom) ? error.output.statusCode : 0;
+    const reason = DisconnectReason[statusCode] || 'Unknown';
 
-async function handleConnectionClose(client: WhatsappClient, lastDisconnect: any): Promise<void> {
-    const error = lastDisconnect?.error as Boom | undefined;
-    const statusCode = error?.output?.statusCode;
-    const reason = DisconnectReason[statusCode as number] || 'Unknown';
+    client.logger.warn(`🔌 Connection closed. Reason: ${reason} (Code: ${statusCode})`);
 
-    client.logger.warn(`🔌 Connection closed. Reason: ${reason}`);
-
+    // Jika ter-logout, hapus sesi dan hentikan bot
     if (statusCode === DisconnectReason.loggedOut) {
         client.logger.error("Connection logged out. Please delete the auth folder and restart.");
         await client.destroySession(true);
+        // Hentikan proses agar tidak mencoba rekoneksi tanpa henti
+        process.exit(1);
         return;
     }
 
+    // Untuk error lain, coba untuk rekoneksi
     client.logger.info("Attempting to reconnect...");
     await client.createSession().catch(err => {
         client.logger.error("❌ Failed to re-create session:", err);
     });
 }
 
-
+/**
+ * Mendefinisikan event handler untuk 'connection.update'.
+ * Event ini mengelola seluruh siklus hidup koneksi, dari QR code, konek, hingga terputus.
+ */
 const connectionUpdateEvent: ClientEvent = {
     event: "connection.update",
     listener: async (update, client) => {

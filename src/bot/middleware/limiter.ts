@@ -16,7 +16,7 @@ export function limiterMiddleware(
         if(!userId)
             return
 
-        if (client.limiter.isUserLimitReached()) {
+        if (client.requestLimiter.isLimitReached()) {
             resolve(() => client.getSession()?.sendMessage(
                 message.key.remoteJid!,
                 {
@@ -25,7 +25,7 @@ export function limiterMiddleware(
             ));
         }
 
-        client.limiter.addUser(userId);
+        client.requestLimiter.startRequest(userId);
         resolve(next())
     })
 }

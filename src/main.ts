@@ -9,10 +9,6 @@ serve({
     fetch: api.fetch,
     port: +port,
 }, async (e) => {
-
     logger.info(`server is running at ${e.port}`)
-
-    // Initialize the bot client
-    logger.info("starting bot");
-    client.createSession()
+    await client.createSession()
 })

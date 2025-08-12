@@ -42,11 +42,11 @@ export default {
 
             content += `- CPU Usage: ${cpuUsagePercentage.toFixed(2)}%`;
             content += `\n- Memory Usage: ${memoryUsage.toFixed(2)}% (${(usedMem / 1024 / 1024).toFixed(2)} MB dari ${(totalMem / 1024 / 1024).toFixed(2)} MB)`;
-            content += `\n- Uptime bot: ${getTimeFormat(client.getStartTime() || 0)}`;
-            content += `\n- Ongoing Process: ${client.limiter.getUserCount()}`;
-            content += `\n- Total Request: ${client.limiter.getCountRequest()}`;
+            content += `\n- Uptime bot: ${getTimeFormat(client.startTime || 0)}`;
+            content += `\n- Ongoing Process: ${client.requestLimiter.getActiveRequestCount()}`;
+            content += `\n- Total Request: ${client.requestLimiter.getTotalRequestCount()}`;
 
-            client.message.sendMessage(message.key.remoteJid || "", {
+            client.messageClient.sendMessage(message.key.remoteJid || "", {
                 text: content
             });
         } catch (error) {

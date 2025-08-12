@@ -10,14 +10,11 @@ export default {
     description: "Kirim masukan ke developer",
     async execute(message, client) {
 
-        const session = client.getSession();
-
         let content = 'Pesan akan diforward ke developer\nHarap tidak melakukan spam\n'
         content += generateSessionFooterContent('req');
-        client.userActiveSession.addUserSession(message, 'req')
+        client.sessionManager.startOrAdvanceSession(message, 'req')
 
-
-        session?.sendMessage((message.key.remoteJid || ""), {
+        client.messageClient.sendMessage((message.key.remoteJid || ""), {
             text: content
         });
     },
@@ -27,8 +24,7 @@ export default {
             description: `${prefix}bug [pesan] | Kirim pesan jika menemukan bug, anda bisa menyertakan gambar jika ada`,
             execute: async (message, client, payload) => {
 
-                const session = client.getSession();
-                if (!session || !message.key?.remoteJid) return;
+                if (!message.key?.remoteJid) return;
 
                 try {
                     let media = null;
@@ -45,12 +41,12 @@ export default {
 
                     if (media) {
                         if (payload.message?.imageMessage) {
-                            await session.sendMessage(devId, {
+                            await client.messageClient.sendMessage(devId, {
                                 image: media,
                                 caption: content
                             });
                         } else if (payload.message?.documentMessage) {
-                            await session.sendMessage(devId, {
+                            await client.messageClient.sendMessage(devId, {
                                 document: media,
                                 caption: content,
                                 fileName: payload.message.documentMessage.fileName || "bug_report",
@@ -58,17 +54,17 @@ export default {
                             });
                         }
                     } else {
-                        await session.sendMessage(devId, { text: content });
+                        await client.messageClient.sendMessage(devId, { text: content });
                     }
 
-                    await session.sendMessage(userJid, {
+                    await client.messageClient.sendMessage(userJid, {
                         text: 'Laporan bug berhasil dikirim ke developer'
                     });
 
                 } catch (error) {
                     logger.warn("Req error:", error);
-                    if (session && message.key?.remoteJid) {
-                        await session.sendMessage(message.key.remoteJid, {
+                    if (message.key?.remoteJid) {
+                        await client.messageClient.sendMessage(message.key.remoteJid, {
                             text: 'Gagal mengirim laporan bug'
                         });
                     }
@@ -80,8 +76,7 @@ export default {
             description: `${prefix}req [pesan] | Kirim pesan jika memiliki masukan`,
             execute: async (message, client, payload) => {
 
-                const session = client.getSession();
-                if (!session || !message.key?.remoteJid) return;
+                if (!message.key?.remoteJid) return;
 
                 try {
                     let media = null;
@@ -98,12 +93,12 @@ export default {
 
                     if (media) {
                         if (payload.message?.imageMessage) {
-                            await session.sendMessage(devId, {
+                            await client.messageClient.sendMessage(devId, {
                                 image: media,
                                 caption: content
                             });
                         } else if (payload.message?.documentMessage) {
-                            await session.sendMessage(devId, {
+                            await client.messageClient.sendMessage(devId, {
                                 document: media,
                                 caption: content,
                                 fileName: payload.message.documentMessage.fileName || "user_feedback",
@@ -111,17 +106,17 @@ export default {
                             });
                         }
                     } else {
-                        await session.sendMessage(devId, { text: content });
+                        await client.messageClient.sendMessage(devId, { text: content });
                     }
 
-                    await session.sendMessage(userJid, {
+                    await client.messageClient.sendMessage(userJid, {
                         text: 'Masukan berhasil dikirim ke developer'
                     });
 
                 } catch (error) {
                     logger.warn("Req error:", error);
-                    if (session && message.key?.remoteJid) {
-                        await session.sendMessage(message.key.remoteJid, {
+                    if (message.key?.remoteJid) {
+                        await client.messageClient.sendMessage(message.key.remoteJid, {
                             text: 'Gagal mengirim masukan'
                         });
                     }

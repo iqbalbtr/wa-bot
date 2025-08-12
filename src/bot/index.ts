@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { WhatsappClient } from './client/whatsaap';
+import { WhatsappClient } from './core/whatsaap';
 
 const client = new WhatsappClient();
 

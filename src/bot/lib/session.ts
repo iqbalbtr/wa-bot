@@ -1,5 +1,5 @@
-import client from "../..";
-import { CommandType } from "../../type/client";
+import client from "..";
+import { CommandType } from "../type/client";
 
 
 export function generateSessionFooterContent(...names: string[]) {
@@ -32,12 +32,4 @@ export function generateSessionFooterContent(...names: string[]) {
     content += "\n- *`/exit`* untuk keluar"
 
     return content
-}
-
-export function handleSessionCommand(command: string, sessions: CommandType[]) {
-
-    const commandIsExist = sessions.find((fo) => fo.name == command);
-
-    if (commandIsExist) return commandIsExist
-
 }

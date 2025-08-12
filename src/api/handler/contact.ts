@@ -17,7 +17,7 @@ contactHandler.get("/", async (ctx) => {
         if(!client.startTime)
             throw new HTTPException(401, { message: "Client is not logged in" });
 
-        contacts = await client.contact.getContact()
+        contacts = client.contactManager.getAllContacts()
         
         await cacheManager.set('contacts-whatsapp', contacts, 1000 * 60 * 15);
     }

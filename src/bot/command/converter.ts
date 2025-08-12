@@ -12,9 +12,9 @@ export default {
     description: "Convert a file to another format",
     usage: `${prefix}converter`,
     execute: (message, client) => {
-        client.userActiveSession.addUserSession(message, 'converter');
+        client.sessionManager.startOrAdvanceSession(message, 'converter');
         const reply = generateSessionFooterContent("converter");
-        client.getSession()?.sendMessage(message.key.remoteJid!, { text: reply });
+    client.messageClient.sendMessage(message.key.remoteJid!, { text: reply });
     },
     commands: [
         {
@@ -28,7 +28,7 @@ export default {
                     const media = await downloadMediaMessage(message, "buffer", {});
 
                     if (!media) {
-                        await session.sendMessage(message.key.remoteJid, { text: "Pastikan file PDF dikirim bersama commandnya" });
+                        await client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan file PDF dikirim bersama commandnya" });
                         return;
                     }
 
@@ -38,7 +38,7 @@ export default {
                     await convertPdfToDocx(tempPath.outputFolderFile, outputDocx);
 
                     const docxBuffer = fs.readFileSync(outputDocx);
-                    await session.sendMessage(message.key.remoteJid, {
+                    await client.messageClient.sendMessage(message.key.remoteJid, {
                         document: docxBuffer,
                         mimetype: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         fileName: outputDocx.split(/[\\/]/).pop(),
@@ -47,7 +47,7 @@ export default {
 
 
                 } catch (error) {
-                    await session.sendMessage(message.key.remoteJid, { text: "Terjadi error saat mengonversi file" });
+                    await client.messageClient.sendMessage(message.key.remoteJid, { text: "Terjadi error saat mengonversi file" });
                     logger.warn("Converter error:", error);
                 }
             }
@@ -61,8 +61,8 @@ export default {
 
                 const content = generateSessionFooterContent("converter", "/img2pdf")
 
-                session.sendMessage(message.key.remoteJid, { text: content })
-                client.userActiveSession.addUserSession(message, '/img2pdf', { data });
+                client.messageClient.sendMessage(message.key.remoteJid, { text: content })
+                client.sessionManager.startOrAdvanceSession(message, '/img2pdf', { data });
 
             },
             commands: [
@@ -76,7 +76,7 @@ export default {
                         let content = "Perintah ini masih dalam pengembangan"
                         content += generateSessionFooterContent("converter", "/img2pdf")
 
-                        session.sendMessage(message.key.remoteJid, { text: content })
+                        client.messageClient.sendMessage(message.key.remoteJid, { text: content })
                     }
                 },
                 {
@@ -89,7 +89,7 @@ export default {
                         let content = "Perintah ini masih dalam pengembangan"
                         content += generateSessionFooterContent("converter", "/img2pdf")
 
-                        session.sendMessage(message.key.remoteJid, { text: content })
+                        client.messageClient.sendMessage(message.key.remoteJid, { text: content })
                     }
                 },
                 {
@@ -102,7 +102,7 @@ export default {
                         let content = "Perintah ini masih dalam pengembangan"
                         content += generateSessionFooterContent("converter", "/img2pdf")
 
-                        session.sendMessage(message.key.remoteJid, { text: content })
+                        client.messageClient.sendMessage(message.key.remoteJid, { text: content })
                     }
                 },
                 {
@@ -115,7 +115,7 @@ export default {
                         let content = "Perintah ini masih dalam pengembangan"
                         content += generateSessionFooterContent("converter", "/img2pdf")
 
-                        session.sendMessage(message.key.remoteJid, { text: content })
+                        client.messageClient.sendMessage(message.key.remoteJid, { text: content })
                     }
                 }
             ]

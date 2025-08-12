@@ -1,5 +1,5 @@
 import { BaileysEventMap, proto } from "@whiskeysockets/baileys";
-import { WhatsappClient } from "../client/whatsaap";
+import { WhatsappClient } from "../core/whatsaap";
 
 export type Client = WhatsappClient
 
@@ -40,7 +40,7 @@ export type PayloadMessage = {
   timestamp: number;
   message: proto.IMessage;
   isGroup: boolean;
-  metionsIds?: string[];
+  mentionedIds: string[];
 }
 
 export type ClientMiddlewareType<T> = (context: ClientContextType<T>, next: () => void) => any

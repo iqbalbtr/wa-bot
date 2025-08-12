@@ -10,9 +10,7 @@ export default {
     usage: `\`${prefix}sticker [nama sticker]\``,
     execute: async (message, client, payload) => {
 
-        const session = client.getSession();
-
-        if (!session || !message.key?.remoteJid) {
+        if (!message.key?.remoteJid) {
             return;
         }
 
@@ -20,7 +18,7 @@ export default {
             const name = payload.text.split(" ").slice(1).join(" ") || "sticker";
 
             if (!payload.message?.imageMessage) {
-                return session.sendMessage(message.key.remoteJid, {
+                return client.messageClient.sendMessage(message.key.remoteJid, {
                     text: "Kirim gambar dengan caption `!sticker [nama]` untuk membuat sticker"
                 });
             }
@@ -28,13 +26,13 @@ export default {
             const buffer = await downloadMediaMessage(message, 'buffer', {});
 
             if (!buffer) {
-                return session.sendMessage(message.key.remoteJid, {
+                return client.messageClient.sendMessage(message.key.remoteJid, {
                     text: "Gagal mengunduh gambar"
                 });
             }
 
             if (buffer.length >= 5 * 1024 * 1024) {
-                return session.sendMessage(message.key.remoteJid, {
+                return client.messageClient.sendMessage(message.key.remoteJid, {
                     text: "Ukuran gambar terlalu besar (maksimal 5MB)"
                 });
             }
@@ -42,7 +40,7 @@ export default {
             const metadata = await sharp(buffer).metadata();
 
             if (!metadata.width || !metadata.height) {
-                return session.sendMessage(message.key.remoteJid, {
+                return client.messageClient.sendMessage(message.key.remoteJid, {
                     text: "Format gambar tidak valid"
                 });
             }
@@ -67,14 +65,14 @@ export default {
                 })
                 .toBuffer();
 
-            await session.sendMessage(message.key.remoteJid, {
+            await client.messageClient.sendMessage(message.key.remoteJid, {
                 sticker: resizedImage,
             });
 
         } catch (error) {
             logger.warn("Sticker error:", error);
-            if (session && message.key?.remoteJid) {
-                session.sendMessage(message.key.remoteJid, {
+            if (message.key?.remoteJid) {
+                client.messageClient.sendMessage(message.key.remoteJid, {
                     text: 'Terjadi kesalahan saat mengkonversi gambar'
                 });
             }

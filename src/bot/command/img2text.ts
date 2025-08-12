@@ -16,13 +16,13 @@ export default {
         try {
 
             if (!payload.message.imageMessage?.mimetype?.startsWith("image")) {
-                await session.sendMessage(message.key.remoteJid, { text: "Pastikan gambar juga dikirim bersama commandnya" });
+                await client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan gambar juga dikirim bersama commandnya" });
                 return;
             }
 
             const buffer = await downloadMediaMessage(message, "buffer", {});
             if (!buffer) {
-                await session.sendMessage(message.key.remoteJid, { text: "Pastikan gambar juga dikirim bersama commandnya" });
+                await client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan gambar juga dikirim bersama commandnya" });
                 return;
             }
 
@@ -35,10 +35,10 @@ export default {
 
             const text = await worker.recognize(converting);
 
-            await session.sendMessage(message.key.remoteJid, { text: text.data.text });
+            await client.messageClient.sendMessage(message.key.remoteJid, { text: text.data.text });
 
         } catch (error) {
-            await session.sendMessage(message.key.remoteJid, { text: "Terjadi masalah saat mengkonversi" });
+            await client.messageClient.sendMessage(message.key.remoteJid, { text: "Terjadi masalah saat mengkonversi" });
             logger.warn("Img2Text error:", error);
         }
     }

@@ -15,7 +15,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.5.2",
+  "packageManager": "pnpm@10.14.0",
   "dependencies": {
     "@cacheable/node-cache": "^1.6.0",
     "@hapi/boom": "^10.0.1",
@@ -35,6 +35,7 @@
     "hono": "^4.8.2",
     "mime-types": "^2.1.35",
     "nodemon": "^3.1.9",
+    "pdf-lib": "^1.17.1",
     "pino": "^9.7.0",
     "qrcode-terminal": "^0.12.0",
     "sharp": "^0.32.6",
