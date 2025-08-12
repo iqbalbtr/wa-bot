@@ -3,11 +3,9 @@ import { ConnectionState, DisconnectReason } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
 import type { ClientEvent } from '../type/client';
 import type { WhatsappClient } from '../core/whatsaap';
+import { dailyRefreshJob, loadAndStartSchedules } from '../../schedule';
 
-/**
- * Menangani logika saat koneksi WhatsApp berhasil terbuka sepenuhnya.
- * @param client Instance WhatsappClient.
- */
+
 async function handleConnectionOpen(client: WhatsappClient): Promise<void> {
     const session = client.getSession();
     if (!session) return;
@@ -22,17 +20,14 @@ async function handleConnectionOpen(client: WhatsappClient): Promise<void> {
             client.groupCache.set(jid, groupMetadata[jid]);
         }
         client.logger.info(`Cached metadata for ${Object.keys(groupMetadata).length} groups.`);
+        dailyRefreshJob.start();
+        await loadAndStartSchedules()
 
     } catch (error) {
         client.logger.error("❌ Failed during post-connection setup:", error);
     }
 }
 
-/**
- * Menangani logika saat koneksi WhatsApp terputus.
- * @param client Instance WhatsappClient.
- * @param lastDisconnect Objek yang berisi informasi tentang alasan diskoneksi.
- */
 async function handleConnectionClose(client: WhatsappClient, lastDisconnect: ConnectionState['lastDisconnect']): Promise<void> {
     const error = lastDisconnect?.error;
     const statusCode = (error instanceof Boom) ? error.output.statusCode : 0;
@@ -40,26 +35,19 @@ async function handleConnectionClose(client: WhatsappClient, lastDisconnect: Con
 
     client.logger.warn(`🔌 Connection closed. Reason: ${reason} (Code: ${statusCode})`);
 
-    // Jika ter-logout, hapus sesi dan hentikan bot
     if (statusCode === DisconnectReason.loggedOut) {
         client.logger.error("Connection logged out. Please delete the auth folder and restart.");
         await client.destroySession(true);
-        // Hentikan proses agar tidak mencoba rekoneksi tanpa henti
         process.exit(1);
         return;
     }
 
-    // Untuk error lain, coba untuk rekoneksi
     client.logger.info("Attempting to reconnect...");
     await client.createSession().catch(err => {
         client.logger.error("❌ Failed to re-create session:", err);
     });
 }
 
-/**
- * Mendefinisikan event handler untuk 'connection.update'.
- * Event ini mengelola seluruh siklus hidup koneksi, dari QR code, konek, hingga terputus.
- */
 const connectionUpdateEvent: ClientEvent = {
     event: "connection.update",
     listener: async (update, client) => {

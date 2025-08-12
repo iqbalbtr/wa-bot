@@ -170,18 +170,21 @@ export class MessageClient {
      * @param message Objek pesan lengkap dari Baileys.
      * @returns Objek pesan yang telah dinormalisasi.
      */
-    public static normalizeMessage(msg: proto.IMessage) {
-        if (msg?.documentWithCaptionMessage?.message) {
-            const docMsg = msg.documentWithCaptionMessage.message.documentMessage;
+    public static normalizeMessage(msg: proto.IWebMessageInfo) {
+
+        let res = this.getUnwrappedMessageContent(msg);
+
+        if (res?.documentWithCaptionMessage?.message) {
+            const docMsg = res.documentWithCaptionMessage.message.documentMessage;
             if (docMsg) {
-                msg.documentMessage = docMsg;
+                res.documentMessage = docMsg;
                 if (docMsg.caption) {
-                    msg.conversation = docMsg.caption;
+                    res.conversation = docMsg.caption;
                 }
             }
-            delete msg.documentWithCaptionMessage;
+            delete res.documentWithCaptionMessage;
         }
-        return msg!;
+        return res!;
     }
 
 }

@@ -4,8 +4,11 @@ import { generateSessionFooterContent } from "../lib/session";
 import { CommandType } from "../type/client";
 import { saveFileToTemp } from "../../shared/lib/storage";
 import { convertPdfToDocx } from "../../script/pdf2docx";
-import * as fs from "fs";
+import { promises as fs } from "fs";
 import logger from "../../shared/lib/logger";
+import sharp from "sharp";
+import path from "path";
+import { PDFDocument } from "pdf-lib"
 
 export default {
     name: "converter",
@@ -14,7 +17,7 @@ export default {
     execute: (message, client) => {
         client.sessionManager.startOrAdvanceSession(message, 'converter');
         const reply = generateSessionFooterContent("converter");
-    client.messageClient.sendMessage(message.key.remoteJid!, { text: reply });
+        client.messageClient.sendMessage(message.key.remoteJid!, { text: reply });
     },
     commands: [
         {
@@ -37,7 +40,7 @@ export default {
 
                     await convertPdfToDocx(tempPath.outputFolderFile, outputDocx);
 
-                    const docxBuffer = fs.readFileSync(outputDocx);
+                    const docxBuffer = await fs.readFile(outputDocx);
                     await client.messageClient.sendMessage(message.key.remoteJid, {
                         document: docxBuffer,
                         mimetype: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -55,70 +58,234 @@ export default {
         {
             name: "/img2pdf",
             description: "Convert image to pdf",
-            execute: async (message, client, payload, data) => {
+            execute: async (message, client) => {
                 const session = client.getSession();
                 if (!session || !message.key?.remoteJid) return;
 
                 const content = generateSessionFooterContent("converter", "/img2pdf")
 
                 client.messageClient.sendMessage(message.key.remoteJid, { text: content })
-                client.sessionManager.startOrAdvanceSession(message, '/img2pdf', { data });
+                client.sessionManager.startOrAdvanceSession(message, '/img2pdf', { images: [] });
 
             },
             commands: [
                 {
-                    name: "/add",
-                    description: "Gunakan /add [image] untuk menambahkan gambar ke dalam dokumen",
+                    name: "/list",
+                    description: "Tampilkan daftar gambar yang akan dikonversi",
                     execute: async (message, client, payload, data) => {
                         const session = client.getSession();
                         if (!session || !message.key?.remoteJid) return;
 
-                        let content = "Perintah ini masih dalam pengembangan"
-                        content += generateSessionFooterContent("converter", "/img2pdf")
+                        const images: string[] = data.images || [];
 
-                        client.messageClient.sendMessage(message.key.remoteJid, { text: content })
+                        if (images.length === 0) {
+                            client.messageClient.sendMessage(message.key.remoteJid, { text: "Belum ada gambar yang ditambahkan." });
+                            return;
+                        }
+
+                        let replyContent = "Daftar gambar yang akan dikonversi:";
+                        images.forEach((image, index) => {
+                            replyContent += `\n${index + 1}. ${image.split(/[\\/]/).pop()}`;
+                        });
+
+                        client.messageClient.sendMessage(message.key.remoteJid, { text: replyContent });
+                    }
+                },
+                {
+                    name: "/add",
+                    description: "Gunakan `/add` `[image]` untuk menambahkan gambar ke dalam dokumen",
+                    execute: async (message, client, payload, data) => {
+                        try {
+                            if (!message.key?.remoteJid) return;
+
+                            const isImage =
+                                (payload.message.imageMessage && payload.message.imageMessage.mimetype?.startsWith("image/")) ||
+                                (payload.message.documentMessage && payload.message.documentMessage.mimetype?.startsWith("image/"));
+
+                            if (!isImage) {
+                                client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan file yang dikirim adalah gambar." });
+                                return;
+                            }
+
+                            const image = await downloadMediaMessage(message, "buffer", {});
+
+                            if (!image) {
+                                client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan gambar juga dikirim bersama commandnya" });
+                                return;
+                            }
+
+                            const outputPath = path.join(process.cwd(), "temp", 'img2pdf', payload.from, `Gambar ke ${data.images.length + 1}.jpg`);
+
+                            await fs.mkdir(path.join(process.cwd(), "temp", 'img2pdf', payload.from), { recursive: true });
+
+                            await sharp(image)
+                                .resize({
+                                    width: 2480,
+                                    fit: 'inside',
+                                    withoutEnlargement: true,
+                                })
+                                .withMetadata({
+                                    density: 300,
+                                })
+                                .jpeg({
+                                    quality: 80,
+                                    progressive: true,
+                                    mozjpeg: true,
+                                })
+                                .toFile(outputPath);
+
+                            const newData: string[] = [...data.images, outputPath];
+
+                            client.sessionManager.updateSessionData(message, { images: newData });
+
+                            let replyContent = "Berikut daftar gambar";
+
+                            for (let i = 0; i < newData.length; i++) {
+                                replyContent += `\n${i + 1}. ${newData[i].split(/[\\/]/).pop()}`;
+                            }
+
+                            client.messageClient.sendMessage(message.key.remoteJid, { text: replyContent });
+                        } catch (error) {
+                            logger.warn("Converter error:", error);
+                            client.messageClient.sendMessage(message.key.remoteJid!, { text: "Terjadi kesalahan saat menambahkan gambar" });
+                        }
                     }
                 },
                 {
                     name: "/remove",
-                    description: "Gunakan /remove [image] untuk menghapus gambar dari dokumen",
+                    description: "Gunakan untuk menghapus gambar dari dokumen Contoh /remove (1)",
                     execute: async (message, client, payload, data) => {
-                        const session = client.getSession();
-                        if (!session || !message.key?.remoteJid) return;
+                        try {
+                            if (!message.key?.remoteJid) return;
 
-                        let content = "Perintah ini masih dalam pengembangan"
-                        content += generateSessionFooterContent("converter", "/img2pdf")
+                            await fs.unlink(data.images[Number(payload.text) - 1]);
 
-                        client.messageClient.sendMessage(message.key.remoteJid, { text: content })
+                            const newData = (data.images as string[]).filter((_, index) => index !== Number(payload.text) - 1);
+
+                            client.sessionManager.updateSessionData(message, { images: newData });
+
+                            let replyContent = "Berikut daftar gambar"
+
+                            for (let i = 0; i < newData.length; i++) {
+                                replyContent += `\n${i + 1}. ${newData[i].split(/[\\/]/).pop()}`
+                            }
+
+                            client.messageClient.sendMessage(message.key.remoteJid, { text: replyContent })
+                        } catch (error) {
+                            logger.warn("Converter error:", error);
+                            client.messageClient.sendMessage(message.key.remoteJid!, { text: "Terjadi kesalahan saat menghapus gambar" });
+                        }
                     }
                 },
                 {
                     name: "/clear",
                     description: "Gunakan /clear untuk menghapus semua gambar dari dokumen",
                     execute: async (message, client, payload, data) => {
-                        const session = client.getSession();
-                        if (!session || !message.key?.remoteJid) return;
+                        try {
 
-                        let content = "Perintah ini masih dalam pengembangan"
-                        content += generateSessionFooterContent("converter", "/img2pdf")
+                            if (!message.key?.remoteJid) return;
 
-                        client.messageClient.sendMessage(message.key.remoteJid, { text: content })
+                            for (const imagePath of data.images) {
+                                await fs.unlink(imagePath);
+                            }
+
+                            client.sessionManager.updateSessionData(message, { images: [] });
+
+                            client.messageClient.sendMessage(message.key.remoteJid, { text: "Semua gambar telah dihapus" })
+                        } catch (error) {
+                            logger.warn("Converter error:", error);
+                            client.messageClient.sendMessage(message.key.remoteJid!, { text: "Terjadi kesalahan saat menghapus gambar" });
+                        }
                     }
                 },
                 {
-                    name: "/execute",
-                    description: "Gunakan /execute [image] untuk mengeksekusi perintah pada gambar",
+                    name: "/exec",
+                    description: "Gunakan /exec  untuk mengeksekusi perintah",
                     execute: async (message, client, payload, data) => {
                         const session = client.getSession();
                         if (!session || !message.key?.remoteJid) return;
 
-                        let content = "Perintah ini masih dalam pengembangan"
-                        content += generateSessionFooterContent("converter", "/img2pdf")
+                        const pdfDoc = await PDFDocument.create();
 
-                        client.messageClient.sendMessage(message.key.remoteJid, { text: content })
+                        for (const imagePath of data.images) {
+
+                            const imageByte = await fs.readFile(imagePath);
+
+                            const fileImage = await pdfDoc.embedJpg(new Uint8Array(imageByte));
+
+                            const page = pdfDoc.addPage([fileImage.width, fileImage.height]);
+                            page.drawImage(fileImage, {
+                                x: 0,
+                                y: 0,
+                                width: fileImage.width,
+                                height: fileImage.height,
+                            });
+
+                        }
+
+                        const pdfBytes = await pdfDoc.save();
+
+                        client.messageClient.sendMessage(message.key.remoteJid, {
+                            document: Buffer.from(pdfBytes),
+                            mimetype: "application/pdf",
+                            fileName: "output.pdf",
+                            caption: "PDF berhasil dibuat!"
+                        });
+
+                        for (const imagePath of data.images) {
+                            await fs.unlink(imagePath);
+                        }
+
+                        client.sessionManager.updateSessionData(message, { images: [] });
                     }
                 }
             ]
+        },
+        {
+            name: "/docx2pdf",
+            description: "Convert a DOCX file to PDF format",
+            execute: async (message, client, payload, data) => {
+                // async function convertDocxToPdf(inputPath, outputPath) {
+                //     try {
+                //         console.log(`Reading input file: ${inputPath}`);
+                //         const docxBuffer = await fs.readFile(inputPath);
+
+                //         console.log('Starting conversion process...');
+
+                //         // Wrap the callback-based convert function in a Promise
+                //         const pdfBuffer = await new Promise((resolve, reject) => {
+                //             libre.convert(docxBuffer, '.pdf', undefined, (err, result) => {
+                //                 if (err) {
+                //                     return reject(err);
+                //                 }
+                //                 resolve(result);
+                //             });
+                //         });
+
+                //         console.log(`Conversion successful. Writing to output file: ${outputPath}`);
+                //         await fs.writeFile(outputPath, pdfBuffer);
+
+                //         console.log('✅ PDF file created successfully!');
+
+                //     } catch (error) {
+                //         console.error('An error occurred during conversion:');
+                //         console.error(error);
+                //     }
+                // }
+
+
+                // // --- How to Use ---
+
+                // // 1. Define the path to your input DOCX file.
+                // const inputFile = path.join(__dirname, 'my-document.docx');
+
+                // // 2. Define the path for the output PDF file.
+                // const outputFile = path.join(__dirname, 'my-document-converted.pdf');
+
+
+                // // 3. Run the conversion function.
+                // convertDocxToPdf(inputFile, outputFile);
+            }
         }
     ]
 } as CommandType;

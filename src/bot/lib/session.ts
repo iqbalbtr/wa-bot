@@ -8,7 +8,7 @@ export function generateSessionFooterContent(...names: string[]) {
 
     for (const name of names) {
         if (!session) {
-            session = client.command.getCommand(name);
+            session = client.commandManager.getCommand(name);
         } else {
             session = session.commands?.find((fo) => fo.name == name);
         }

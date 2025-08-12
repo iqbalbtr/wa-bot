@@ -2,18 +2,15 @@ import { proto } from "@whiskeysockets/baileys";
 import { Client, ClientContextType } from "../type/client";
 import { extractContactId } from "../lib/util";
 
-export function limiterMiddleware(
-    context: ClientContextType<proto.IWebMessageInfo>,
-    next: () => void
-) {
+export function limiterMiddleware(context: ClientContextType, next: () => void) {
 
-    const { client, params: message } = context;
+    const { client, message } = context;
 
     return new Promise((resolve) => {
 
         const userId = message.key.remoteJid
 
-        if(!userId)
+        if (!userId)
             return
 
         if (client.requestLimiter.isLimitReached()) {

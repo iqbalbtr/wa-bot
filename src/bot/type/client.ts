@@ -24,23 +24,26 @@ export type CommandType = {
 }
 
 export type SessionUserType = {
-    current: string[]
-    session: CommandType;
-    data: object | any,
+  current: string[]
+  session: CommandType;
+  data: object | any,
 }
 
-export type ClientContextType<T> = {
-    client: Client,
-    params: T
+export type ClientContextType = {
+  client: Client,
+  message: proto.IWebMessageInfo,
+  payload: PayloadMessage
 }
 
 export type PayloadMessage = {
   from: string;
+  command: string;
   text: string;
+  originalText: string;
   timestamp: number;
   message: proto.IMessage;
   isGroup: boolean;
   mentionedIds: string[];
 }
 
-export type ClientMiddlewareType<T> = (context: ClientContextType<T>, next: () => void) => any
+export type ClientMiddlewareType = (context: ClientContextType, next: () => void) => any

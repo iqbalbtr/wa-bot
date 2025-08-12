@@ -142,9 +142,11 @@ function stopAllSchedules() {
 }
 
 const dailyRefreshJob = new CronJob("0 0 0 * * *", async () => {
-    console.log("[Scheduler] Refreshing schedules...");
+    logger.info("[Scheduler] Refreshing schedules...");
     stopAllSchedules();
     await loadAndStartSchedules();
+
+    client.requestLimiter.cleanupStaleRequests()
 });
 
 export { loadAndStartSchedules, stopAllSchedules, dailyRefreshJob, activateNewSchedule };

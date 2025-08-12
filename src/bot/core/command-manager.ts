@@ -1,11 +1,10 @@
 import { BaileysEventMap, proto } from "@whiskeysockets/baileys";
 import path from "path";
 import fs from "fs";
-import { Client, CommandType, PayloadMessage, SessionUserType } from "../type/client";
+import { Client, ClientMiddlewareType, CommandType, PayloadMessage, SessionUserType } from "../type/client";
 import { extractCommandFromPrefix, extractContactId, extractLid, extractMessageFromGroupMessage, middlewareApplier } from "../lib/util";
 import logger from "../../shared/lib/logger";
-import { blockUserMiddleware } from "../middleware/block-user";
-import { limiterMiddleware } from "../middleware/limiter";
+import { limiterMiddleware } from "../middleware/request-limiter";
 import { MessageClient } from "./message-client";
 
 /**
@@ -15,6 +14,7 @@ import { MessageClient } from "./message-client";
 export class CommandManager {
     private commands: Map<string, CommandType> = new Map();
     private client: Client;
+    private middlewares: ClientMiddlewareType[] = [limiterMiddleware];
 
     constructor(client: Client) {
         this.client = client;
@@ -92,6 +92,14 @@ export class CommandManager {
         this.client.logger.info(`Total ${this.commands.size} commands initialized.`);
     }
 
+    /**
+     * Menambahkan middleware ke dalam daftar middleware yang akan diterapkan.
+     * @param middleware Middleware yang akan ditambahkan.
+     */
+    public addMiddleware(middleware: ClientMiddlewareType): void {
+        this.middlewares.push(middleware);
+    }
+
     // =================================================================================
     // Pemrosesan Pesan Masuk
     // =================================================================================
@@ -107,22 +115,36 @@ export class CommandManager {
             return;
         }
 
+        const text = extractMessageFromGroupMessage(MessageClient.getMessageText(message));
+
         const senderJid = message.key.remoteJid.endsWith("@g.us")
             ? message.key.participant || ""
             : message.key.remoteJid;
 
         if (!senderJid) return;
 
+
+        const payload: PayloadMessage = {
+            from: senderJid,
+            originalText: text,
+            command: extractCommandFromPrefix(text) || "",
+            text: text.split(" ").slice(1).join(" "),
+            timestamp: Date.now(),
+            message: MessageClient.normalizeMessage(message),
+            isGroup: message.key.remoteJid?.endsWith("@g.us") || false,
+            mentionedIds: MessageClient.extractMentionedJids(message)
+        };
+
+
         try {
             await middlewareApplier(
-                { client: this.client, params: message },
-                [blockUserMiddleware, limiterMiddleware],
+                { client: this.client, message, payload },
+                this.middlewares,
                 () => this.routeMessage(message, senderJid)
             );
         } catch (error) {
             logger.error(`Middleware or command processing failed for ${senderJid}:`, error);
         } finally {
-
             this.client.requestLimiter.endRequest(senderJid);
         }
     }
@@ -133,14 +155,16 @@ export class CommandManager {
      * @param senderJid JID pengirim.
      */
     private async routeMessage(message: proto.IWebMessageInfo, senderJid: string): Promise<void> {
-        const unwrappedContent = MessageClient.getUnwrappedMessageContent(message);
+        const unwrappedContent = MessageClient.normalizeMessage(message);
         if (!unwrappedContent) return;
 
         const text = extractMessageFromGroupMessage(MessageClient.getMessageText(message));
 
         const payload: PayloadMessage = {
             from: senderJid,
-            text,
+            originalText: text,
+            command: extractCommandFromPrefix(text) || "",
+            text: text.split(" ").slice(1).join(" "),
             timestamp: Date.now(),
             message: unwrappedContent,
             isGroup: message.key.remoteJid?.endsWith("@g.us") || false,
@@ -162,13 +186,12 @@ export class CommandManager {
      * Memproses command dari user yang sedang dalam sesi interaktif.
      */
     private handleUserInSession(payload: PayloadMessage, message: proto.IWebMessageInfo, userSession: SessionUserType): void {
-        const commandName = extractCommandFromPrefix(payload.text) || "";
 
-        if (this.handleSessionNavigation(commandName, message, userSession)) {
+        if (this.handleSessionNavigation(payload.command, message, userSession)) {
             return;
         }
 
-        const sessionCommand = userSession.session.commands?.find(c => c.name.toLowerCase() === commandName.toLowerCase());
+        const sessionCommand = userSession.session.commands?.find(c => c.name.toLowerCase() === payload.command.toLowerCase());
 
         if (sessionCommand) {
             sessionCommand.execute(message, this.client, payload, userSession.data);
@@ -182,8 +205,7 @@ export class CommandManager {
      * Memproses command dari user normal (tidak dalam sesi).
      */
     private handleNormalUser(payload: PayloadMessage, message: proto.IWebMessageInfo): void {
-        const commandName = extractCommandFromPrefix(payload.text) || "";
-        const command = this.getCommand(commandName);
+        const command = this.getCommand(payload.command);
 
         if (command) {
             command.execute(message, this.client, payload);

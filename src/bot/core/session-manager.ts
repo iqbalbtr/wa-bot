@@ -35,7 +35,7 @@ export class SessionManager {
         if (!targetCommand) {
             this.client.messageClient.sendMessage(msg.key.remoteJid!, {
                 text: "Maaf, sesi atau perintah tidak dapat ditemukan."
-            }, { quoted: msg });
+            });
             return;
         }
 

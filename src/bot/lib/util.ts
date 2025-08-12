@@ -18,8 +18,8 @@ export function extractLid(message: string): string {
 }
 
 export async function middlewareApplier(
-    context: ClientContextType<any>,
-    middlewares: ClientMiddlewareType<any>[],
+    context: ClientContextType,
+    middlewares: ClientMiddlewareType[],
     finalFn: () => void
 ) {
 

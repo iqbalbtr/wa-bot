@@ -8,14 +8,30 @@ import logger from "../../shared/lib/logger";
 export class RequestLimiter {
 
     private activeRequests: NodeCache<number> = new NodeCache();
-    private readonly concurrencyLimit: number;
+    private concurrencyLimit: number;
     private totalRequestCount: number = 0;
-    private readonly requestTimeout: number;
+    private requestTimeout: number;
     private readonly logger = logger;
 
     constructor(limit: number = 10, timeoutMs: number = 30000) {
         this.concurrencyLimit = limit > 0 ? limit : 10;
         this.requestTimeout = timeoutMs;
+    }
+
+    /**
+     * Mengatur batas jumlah permintaan yang dapat diproses secara bersamaan.
+     * @param limit Batas jumlah permintaan.
+     */
+    public setConcurrencyLimit(limit: number): void {
+        this.concurrencyLimit = limit > 0 ? limit : 10;
+    }
+
+    /**
+     * Mengatur batas waktu untuk setiap permintaan.
+     * @param timeoutMs Batas waktu dalam milidetik.
+     */
+    public setRequestTimeout(timeoutMs: number): void {
+        this.requestTimeout = timeoutMs > 0 ? timeoutMs : 30000;
     }
 
     /**
