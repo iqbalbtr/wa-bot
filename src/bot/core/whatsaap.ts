@@ -128,15 +128,16 @@ export class WhatsappClient {
      * Mengirim balasan default jika command tidak ditemukan, dengan saran jika memungkinkan.
      */
     public async defaultMessageReply(message: proto.IWebMessageInfo, payload: PayloadMessage): Promise<void> {
+        
         const remoteJid = message.key?.remoteJid;
-        if (!remoteJid || !payload.text) return;
-
+        if (!remoteJid || !payload.originalText) return;
+        
         const commandName = payload.text.split(' ')[0].replace(this.getPrefix(), '');
         const allCommandNames = this.commandManager.getAllCommands().map(cmd => cmd.name);
-
+        
         // Jangan kirim balasan jika command sebenarnya ada tapi mungkin gagal di middleware
         if (allCommandNames.includes(commandName)) return;
-
+        
         const suggestion = didYouMean(commandName, allCommandNames) as string | false;
         let replyText = `Perintah tidak ditemukan. Gunakan *${this.getPrefix()}help* untuk melihat daftar perintah.`;
 
@@ -144,7 +145,7 @@ export class WhatsappClient {
             replyText = `Mungkin yang Anda maksud adalah: *${this.getPrefix()}${suggestion}*`;
         }
 
-        await this.session?.sendMessage(remoteJid, { text: replyText });
+        await this.messageClient.sendMessage(remoteJid, { text: replyText });
     }
 
     // =================================================================================

@@ -22,7 +22,6 @@
     "@hono/node-server": "^1.18.1",
     "@hono/zod-validator": "^0.7.0",
     "@imgly/background-removal-node": "^1.4.5",
-    "@tobyg74/tiktok-api-dl": "^1.2.8",
     "@whiskeysockets/baileys": "^6.7.18",
     "axios": "^1.8.3",
     "better-sqlite3": "^11.9.1",

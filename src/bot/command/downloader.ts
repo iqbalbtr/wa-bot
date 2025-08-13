@@ -1,10 +1,9 @@
-import Tiktok from '@tobyg74/tiktok-api-dl';
 import path from "path";
 import fs from "fs";
 import { childProcessCallback } from "../../shared/lib/util";
 import { CommandType } from '../type/client';
-import { generateSessionFooterContent } from '../lib/session';
 import logger from '../../shared/lib/logger';
+import { generateSessionFooterContent } from '../lib/util';
 
 export default {
     name: "downloader",
@@ -17,52 +16,40 @@ export default {
     },
     commands: [
         {
-            name: '/tiktok',
-            description: `Downloader video dari tiktok pastikan setelah command kirim juga linknya`,
-            execute: async (message, client, payload) => {
-                if (!message.key?.remoteJid) return;
-                const link = payload.text.split(" ")[1];
-                if (!link) {
-                    await client.messageClient.sendMessage(message.key.remoteJid, { text: 'Link tidak ditemukan' });
-                    return;
-                }
-                try {
-                    const res = await Tiktok.Downloader(link, { version: "v3" });
-                    if (!res.result?.videoHD) {
-                        await client.messageClient.sendMessage(message.key.remoteJid, { text: "Gagal mendapatkan video. Coba gunakan link lain." });
-                        return;
-                    }
-                    await client.messageClient.sendMessage(message.key.remoteJid, { text: 'Link unduh : ' + res.result.videoHD });
-                } catch (error) {
-                    logger.warn("Downloader error:", error);
-                    await client.messageClient.sendMessage(message.key.remoteJid, { text: "Terjadi kesalahan saat mengunduh video." });
-                }
-            },
-        },
-        {
             name: "/yt-video",
             description: "Downloader video dari youtube, pastikan setelah command kirim juga linknya",
             execute: async (message, client, payload) => {
                 if (!message.key?.remoteJid) return;
-                const link = payload.text.split(" ")[1];
+                const link = payload.text.trim();
                 if (!link) {
                     await client.messageClient.sendMessage(message.key.remoteJid, { text: 'Link tidak ditemukan' });
                     return;
                 }
+                const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+                if (!youtubeRegex.test(link)) {
+                    await client.messageClient.sendMessage(message.key.remoteJid, { text: 'Link bukan link YouTube yang valid.' });
+                    return;
+                }
                 try {
-                    const outputpath = path.join(__dirname, "../temp");
+                    const outputpath = path.resolve(process.cwd(), "temp", "yt-dlp", Date.now().toString());
+                    fs.mkdirSync(outputpath, { recursive: true });
                     const res = await childProcessCallback("yt-dlp", link, "-o", `${outputpath}/%(title)s.%(ext)s`);
                     const outputFile = res.find(fo => fo.startsWith("[download] Destination:"));
                     if (outputFile) {
                         const fileName = outputFile.split(": ")[1].trim();
-                        // Send as document
-                        const buffer = fs.readFileSync(fileName);
-                        await client.messageClient.sendMessage(message.key.remoteJid, {
-                            document: buffer,
-                            mimetype: "video/mp4",
-                            fileName: path.basename(fileName),
-                            caption: "Berhasil mengunduh video"
-                        });
+                        if (fs.existsSync(fileName)) {
+                            const buffer = fs.readFileSync(fileName);
+                            await client.messageClient.sendMessage(message.key.remoteJid, {
+                                document: buffer,
+                                mimetype: "video/mp4",
+                                fileName: path.basename(fileName),
+                                caption: "Berhasil mengunduh video"
+                            });
+
+                            try { fs.unlinkSync(fileName); } catch (e) { logger.warn("Gagal menghapus file sementara:", e); }
+                        } else {
+                            await client.messageClient.sendMessage(message.key.remoteJid, { text: "File hasil unduhan tidak ditemukan di sistem." });
+                        }
                     } else {
                         await client.messageClient.sendMessage(message.key.remoteJid, { text: "Gagal menemukan file hasil unduhan." });
                     }

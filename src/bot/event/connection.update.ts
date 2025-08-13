@@ -3,7 +3,6 @@ import { ConnectionState, DisconnectReason } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
 import type { ClientEvent } from '../type/client';
 import type { WhatsappClient } from '../core/whatsaap';
-import { dailyRefreshJob, loadAndStartSchedules } from '../../schedule';
 
 
 async function handleConnectionOpen(client: WhatsappClient): Promise<void> {
@@ -20,8 +19,6 @@ async function handleConnectionOpen(client: WhatsappClient): Promise<void> {
             client.groupCache.set(jid, groupMetadata[jid]);
         }
         client.logger.info(`Cached metadata for ${Object.keys(groupMetadata).length} groups.`);
-        dailyRefreshJob.start();
-        await loadAndStartSchedules()
 
     } catch (error) {
         client.logger.error("❌ Failed during post-connection setup:", error);

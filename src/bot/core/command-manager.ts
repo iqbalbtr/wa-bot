@@ -115,7 +115,14 @@ export class CommandManager {
             return;
         }
 
-        const text = extractMessageFromGroupMessage(MessageClient.getMessageText(message));
+        const clientInfo = this.client.getInfoClient();
+        const text = extractMessageFromGroupMessage(MessageClient.getMessageText(message)).trim();
+        const isMentioned = MessageClient.extractMentionedJids(message).some(jid => {
+            if (jid.endsWith("@lid")) {
+                return extractLid(jid).includes(clientInfo?.lid || "");
+            }
+            return extractContactId(jid) === clientInfo?.phone;
+        })
 
         const senderJid = message.key.remoteJid.endsWith("@g.us")
             ? message.key.participant || ""
@@ -128,11 +135,12 @@ export class CommandManager {
             from: senderJid,
             originalText: text,
             command: extractCommandFromPrefix(text) || "",
-            text: text.split(" ").slice(1).join(" "),
+            text: extractCommandFromPrefix(text) ? text.split(" ").slice(1).join(" ") : text,
             timestamp: Date.now(),
             message: MessageClient.normalizeMessage(message),
             isGroup: message.key.remoteJid?.endsWith("@g.us") || false,
-            mentionedIds: MessageClient.extractMentionedJids(message)
+            mentionedIds: MessageClient.extractMentionedJids(message),
+            isMentioned
         };
 
 
@@ -140,7 +148,7 @@ export class CommandManager {
             await middlewareApplier(
                 { client: this.client, message, payload },
                 this.middlewares,
-                () => this.routeMessage(message, senderJid)
+                () => this.routeMessage(message, payload, senderJid)
             );
         } catch (error) {
             logger.error(`Middleware or command processing failed for ${senderJid}:`, error);
@@ -154,22 +162,10 @@ export class CommandManager {
      * @param message Objek pesan Baileys.
      * @param senderJid JID pengirim.
      */
-    private async routeMessage(message: proto.IWebMessageInfo, senderJid: string): Promise<void> {
+    private async routeMessage(message: proto.IWebMessageInfo, payload: PayloadMessage, senderJid: string): Promise<void> {
+
         const unwrappedContent = MessageClient.normalizeMessage(message);
         if (!unwrappedContent) return;
-
-        const text = extractMessageFromGroupMessage(MessageClient.getMessageText(message));
-
-        const payload: PayloadMessage = {
-            from: senderJid,
-            originalText: text,
-            command: extractCommandFromPrefix(text) || "",
-            text: text.split(" ").slice(1).join(" "),
-            timestamp: Date.now(),
-            message: unwrappedContent,
-            isGroup: message.key.remoteJid?.endsWith("@g.us") || false,
-            mentionedIds: MessageClient.extractMentionedJids(message)
-        };
 
         if (!this.shouldProcessMessage(payload)) return;
 

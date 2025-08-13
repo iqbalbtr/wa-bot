@@ -1,5 +1,5 @@
 import { prefix } from "../../shared/constant/env"
-import { generateSessionFooterContent } from "../lib/session";
+import { generateSessionFooterContent } from "../lib/util";
 import { Client, CommandType } from "../type/client";
 
 export default {

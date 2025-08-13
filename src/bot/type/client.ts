@@ -44,6 +44,7 @@ export type PayloadMessage = {
   message: proto.IMessage;
   isGroup: boolean;
   mentionedIds: string[];
+  isMentioned: boolean
 }
 
 export type ClientMiddlewareType = (context: ClientContextType, next: () => void) => any

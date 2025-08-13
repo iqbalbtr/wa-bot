@@ -1,8 +1,8 @@
 import { devId, prefix } from "../../shared/constant/env";
 import { CommandType } from "../type/client";
-import { generateSessionFooterContent } from "../lib/session";
 import { downloadMediaMessage } from "@whiskeysockets/baileys";
 import logger from "../../shared/lib/logger";
+import { generateSessionFooterContent } from "../lib/util";
 
 export default {
     name: "req",

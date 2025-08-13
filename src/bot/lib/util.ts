@@ -1,9 +1,5 @@
-import didyoumean from "didyoumean";
-import path from "path";
-import fs from "fs"
 import client from "../../bot";
-import { ClientContextType, ClientMiddlewareType } from "../type/client";
-import { proto } from "@whiskeysockets/baileys";
+import { ClientContextType, ClientMiddlewareType, CommandType } from "../type/client";
 
 export function extractMessageFromCommand(body: string) {
     return body.split(" ")[1]
@@ -47,10 +43,10 @@ export async function middlewareApplier(
 }
 
 export function extractCommandFromPrefix(body: string) {
-    
+
     const prefix = client.getPrefix();
 
-    if(body.trim().startsWith("/")) {
+    if (body.trim().startsWith("/")) {
         return body.trim().split(" ")[0];
     }
 
@@ -65,10 +61,43 @@ export function extractMessageFromGroupMessage(text: string) {
     let res = ""
 
     text.split(" ").forEach((word, index) => {
-        if(!word.startsWith("@")) {
+        if (!word.startsWith("@")) {
             res += word + " ";
         }
     })
 
     return res.trim();
+}
+
+
+export function generateSessionFooterContent(...names: string[]) {
+
+    let session: CommandType | undefined = undefined
+
+    for (const name of names) {
+        if (!session) {
+            session = client.commandManager.getCommand(name);
+        } else {
+            session = session.commands?.find((fo) => fo.name == name);
+        }
+    }
+
+    if (!session?.commands) {
+        return ''
+    }
+
+    let content = 'Gunakan command berikut'
+    if (session.commands) {
+        session.commands.forEach((text) => {
+            content += `\n- ` + "*`" + `${text.name}` + "`*" + ` ${text.description}`
+        })
+    }
+
+    if (names.length > 1) {
+        content += "\n- *`/back`* untuk kembali"
+    }
+
+    content += "\n- *`/exit`* untuk keluar"
+
+    return content
 }

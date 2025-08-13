@@ -6,6 +6,8 @@ import {
 } from "@whiskeysockets/baileys";
 import { WhatsappClient } from "./whatsaap";
 import logger from "../../shared/lib/logger";
+import fs from "fs";
+import mime from "mime-types";
 
 /**
  * Interface untuk pesan yang tertunda (pending) dan akan dikirim
@@ -59,8 +61,9 @@ export class MessageClient {
     public async sendMessage(
         recipientJid: string,
         content: AnyMessageContent,
-        options?: MiscMessageGenerationOptions
+        options?: MiscMessageGenerationOptions,
     ): Promise<void> {
+
         if (!this.session) {
             this.pendingMessageQueue.push({
                 timestamp: Date.now(),
@@ -99,7 +102,7 @@ export class MessageClient {
                 await this.session.sendMessage(msg.recipientJid, msg.content, msg.options);
             } catch (error) {
                 logger.error("Failed to send pending message, re-queuing:", error);
-                this.pendingMessageQueue.push(msg); 
+                this.pendingMessageQueue.push(msg);
             }
         }
     }
@@ -165,11 +168,11 @@ export class MessageClient {
         return contextInfo?.mentionedJid || [];
     }
 
-     /**
-     * Melakukan normalisasi pesan untuk memastikan konsistensi struktur.
-     * @param message Objek pesan lengkap dari Baileys.
-     * @returns Objek pesan yang telah dinormalisasi.
-     */
+    /**
+    * Melakukan normalisasi pesan untuk memastikan konsistensi struktur.
+    * @param message Objek pesan lengkap dari Baileys.
+    * @returns Objek pesan yang telah dinormalisasi.
+    */
     public static normalizeMessage(msg: proto.IWebMessageInfo) {
 
         let res = this.getUnwrappedMessageContent(msg);
@@ -187,4 +190,42 @@ export class MessageClient {
         return res!;
     }
 
+    public static handleAttachmentMessage(filePath: string, text: string) {
+
+        let options: AnyMessageContent = {
+            text: ""
+        }
+
+        if (fs.existsSync(filePath) && filePath) {
+            const buffer = fs.readFileSync(filePath);
+            const mimeType = mime.lookup(filePath) || "application/octet-stream";
+            const fileName = filePath.split(/[\\/]/).pop() || "file";
+            if (mimeType.startsWith("image/")) {
+                options = {
+                    image: buffer,
+                    caption: text
+                };
+            } else if (mimeType.startsWith("video/")) {
+                options = {
+                    video: buffer,
+                    caption: text
+                };
+            } else if (mimeType.startsWith("audio/")) {
+                options = {
+                    audio: buffer,
+                    mimetype: mimeType
+                };
+            } else {
+                options = {
+                    document: buffer,
+                    mimetype: mimeType,
+                    fileName: fileName,
+                    caption: text
+                };
+            }
+            return options
+        } else {
+            logger.error(`Attachment file not found`);
+        }
+    }
 }

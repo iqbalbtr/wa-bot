@@ -15,7 +15,6 @@ export default {
     if (!session || !message.key?.remoteJid) return;
 
     try {
-      // Download image from message
       const buffer = await downloadMediaMessage(message, "buffer", {});
       if (!buffer) {
         await session.sendMessage(message.key.remoteJid, { text: "Pastikan gambarnya juga dikirim bersama commandnya" });
@@ -27,10 +26,8 @@ export default {
         return;
       }
 
-      // Save temp file
       const { outputFolderFile, outputFolder, filename } = saveFileToTemp(new Uint8Array(buffer), ['img', 'rem-bg'], '.png');
 
-      // Remove background
       const removeBgBuffer = await removeBackground(outputFolderFile, {
         output: {
           format: 'image/png',
@@ -38,7 +35,6 @@ export default {
         }
       });
 
-      // Send result as document
       await session.sendMessage(message.key.remoteJid, {
         document: Buffer.from(await removeBgBuffer.arrayBuffer()),
         mimetype: "image/png",

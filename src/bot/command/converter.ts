@@ -1,6 +1,5 @@
 import { downloadMediaMessage, proto } from "@whiskeysockets/baileys";
 import { prefix } from "../../shared/constant/env";
-import { generateSessionFooterContent } from "../lib/session";
 import { CommandType } from "../type/client";
 import { saveFileToTemp } from "../../shared/lib/storage";
 import { convertPdfToDocx } from "../../script/pdf2docx";
@@ -9,6 +8,7 @@ import logger from "../../shared/lib/logger";
 import sharp from "sharp";
 import path from "path";
 import { PDFDocument } from "pdf-lib"
+import { generateSessionFooterContent } from "../lib/util";
 
 export default {
     name: "converter",
@@ -240,52 +240,6 @@ export default {
                     }
                 }
             ]
-        },
-        {
-            name: "/docx2pdf",
-            description: "Convert a DOCX file to PDF format",
-            execute: async (message, client, payload, data) => {
-                // async function convertDocxToPdf(inputPath, outputPath) {
-                //     try {
-                //         console.log(`Reading input file: ${inputPath}`);
-                //         const docxBuffer = await fs.readFile(inputPath);
-
-                //         console.log('Starting conversion process...');
-
-                //         // Wrap the callback-based convert function in a Promise
-                //         const pdfBuffer = await new Promise((resolve, reject) => {
-                //             libre.convert(docxBuffer, '.pdf', undefined, (err, result) => {
-                //                 if (err) {
-                //                     return reject(err);
-                //                 }
-                //                 resolve(result);
-                //             });
-                //         });
-
-                //         console.log(`Conversion successful. Writing to output file: ${outputPath}`);
-                //         await fs.writeFile(outputPath, pdfBuffer);
-
-                //         console.log('✅ PDF file created successfully!');
-
-                //     } catch (error) {
-                //         console.error('An error occurred during conversion:');
-                //         console.error(error);
-                //     }
-                // }
-
-
-                // // --- How to Use ---
-
-                // // 1. Define the path to your input DOCX file.
-                // const inputFile = path.join(__dirname, 'my-document.docx');
-
-                // // 2. Define the path for the output PDF file.
-                // const outputFile = path.join(__dirname, 'my-document-converted.pdf');
-
-
-                // // 3. Run the conversion function.
-                // convertDocxToPdf(inputFile, outputFile);
-            }
         }
     ]
 } as CommandType;

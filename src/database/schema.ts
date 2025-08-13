@@ -15,3 +15,9 @@ export const blockedUsers = sqliteTable("blocked_users", {
     contact_id: text().notNull(),
     blocked_at: text().default(sql`(CURRENT_TIMESTAMP)`),
 });
+
+export const groupSettings = sqliteTable("group_settings", {
+    id: integer().primaryKey({ autoIncrement: true }),
+    group_id: text().notNull(),
+    settings: text({ mode: "json" }).$type<Array<{ key: string, value: boolean }>>().notNull()
+})

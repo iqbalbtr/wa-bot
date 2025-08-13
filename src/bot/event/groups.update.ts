@@ -14,6 +14,7 @@ export default {
             }
 
             const metadata = await session.groupMetadata(event.id);
+
             client.groupCache.set(event.id, metadata);
         } catch (error) {
             client.logger.warn(`Failed to update cache for group ${event.id}:`, error);
