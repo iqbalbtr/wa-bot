@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import db from "../../database";
 import { groupSettings } from "../../database/schema";
 import { ClientEvent } from "../type/client";
-import { groupEnumSetting } from "../command/setting";
+import { groupEnumSetting } from "../command/group";
 
 export default {
     event: "group-participants.update",
@@ -18,7 +18,13 @@ export default {
                 return;
             }
 
+            if(action) {
+                const group = await session.groupMetadata(id)
+                client.groupCache.set(id, group);
+            }
+
             if (action == "add") {
+
                 const isGroup = (await db.select().from(groupSettings).where(eq(groupSettings.group_id, id)).limit(1))[0];
                 const isGreetingActive = isGroup.settings.find(s => s.key === groupEnumSetting.GREETING_NEW_MEMBER && s.value)
 

@@ -37,6 +37,7 @@ export type ClientContextType = {
 
 export type PayloadMessage = {
   from: string;
+  groupId?: string;
   command: string;
   text: string;
   originalText: string;

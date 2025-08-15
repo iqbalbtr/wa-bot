@@ -10,32 +10,38 @@ export function extractContactId(message: string): string {
 }
 
 export function extractLid(message: string): string {
-    return message.split(":")[0]
+    const test = message.includes(":") ? message.split(":")[0].trim() : "";
+    if (test)
+        return test
+    return message.split("@")[0];
 }
 
 export async function middlewareApplier(
     context: ClientContextType,
-    middlewares: ClientMiddlewareType[],
+    middlewares: { command: string[], middleware: ClientMiddlewareType }[],
     finalFn: () => void
 ) {
+    const { payload, client } = context;
+    const userSession = client.sessionManager.getUserSession(payload.from);
 
     let index = -1;
 
     async function next(i: number) {
-
-        if (i <= index)
-            throw new Error("next() called multiple times");
-
+        if (i <= index) throw new Error("next() called multiple times");
         index = i;
 
-        if (i == middlewares.length) {
-            return finalFn()
+        if (i === middlewares.length) {
+            return finalFn();
         }
 
         const middleware = middlewares[i];
+        const currentCommand = userSession?.current[0] ?? payload.command;
+        const isCommand = middleware.command.includes("*") || middleware.command.includes(currentCommand);
 
-        if (middleware) {
-            await middleware(context, () => next(i + 1));
+        if (middleware && isCommand) {
+            await middleware.middleware(context, () => next(i + 1));
+        } else {
+            await next(i + 1);
         }
     }
 

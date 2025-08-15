@@ -14,7 +14,7 @@ import { MessageClient } from "./message-client";
 export class CommandManager {
     private commands: Map<string, CommandType> = new Map();
     private client: Client;
-    private middlewares: ClientMiddlewareType[] = [limiterMiddleware];
+    private middlewares: { command: string[], middleware: ClientMiddlewareType }[] = [{ command: ["*"], middleware: limiterMiddleware }];
 
     constructor(client: Client) {
         this.client = client;
@@ -96,8 +96,42 @@ export class CommandManager {
      * Menambahkan middleware ke dalam daftar middleware yang akan diterapkan.
      * @param middleware Middleware yang akan ditambahkan.
      */
-    public addMiddleware(middleware: ClientMiddlewareType): void {
-        this.middlewares.push(middleware);
+    /**
+     * Menambahkan middleware ke dalam daftar middleware yang akan diterapkan.
+     * @param command Nama command (string), array of command, atau middleware global ('*').
+     * @param middleware Middleware yang akan ditambahkan.
+     */
+    /**
+     * Menambahkan satu atau beberapa middleware ke satu atau beberapa command.
+     * Contoh penggunaan:
+     *   addMiddleware("admin", fn1, fn2)
+     *   addMiddleware(["admin", "user"], fn1, fn2)
+     *   addMiddleware(fn1, fn2) // global
+     * @param command Nama command (string), array of command, atau langsung middleware global.
+     * @param middlewares Satu atau lebih middleware function.
+     */
+    public addMiddleware(
+        commandOrMiddleware: string | string[] | ClientMiddlewareType,
+        ...middlewares: ClientMiddlewareType[]
+    ): void {
+        if (typeof commandOrMiddleware === "function") {
+            [commandOrMiddleware, ...middlewares].forEach(mw => {
+                this.middlewares.push({ command: ["*"], middleware: mw });
+            });
+        } else {
+            if (
+                (typeof commandOrMiddleware === "string" && commandOrMiddleware.trim() === "") ||
+                (Array.isArray(commandOrMiddleware) && commandOrMiddleware.some(cmd => cmd.trim() === ""))
+            ) {
+                throw new Error("Invalid command name: empty string is not allowed");
+            }
+            middlewares.forEach(mw => {
+                this.middlewares.push({
+                    command: Array.isArray(commandOrMiddleware) ? commandOrMiddleware : [commandOrMiddleware],
+                    middleware: mw
+                });
+            });
+        }
     }
 
     // =================================================================================
@@ -133,6 +167,7 @@ export class CommandManager {
 
         const payload: PayloadMessage = {
             from: senderJid,
+            groupId: message.key.remoteJid.endsWith("@g.us") ? message.key.remoteJid : undefined,
             originalText: text,
             command: extractCommandFromPrefix(text) || "",
             text: extractCommandFromPrefix(text) ? text.split(" ").slice(1).join(" ") : text,
