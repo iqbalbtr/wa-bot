@@ -78,18 +78,26 @@ export default {
     ]
 } as CommandType
 
-
 function getDataHelpWithPagination(client: Client, page: number, limit: number, totalPage: number) {
-
-    const skip = (page - 1) * limit
+    const skip = (page - 1) * limit;
     const allCommand = [...client.commandManager.getAllCommands()].slice(skip, skip + limit);
 
-    let content = `Daftar Perintah\n\nHal : ${page}\nTotal Hal : ${totalPage}`;
+    let content = `*📖 Daftar Perintah Bot*\n`;
+    content += `────────────────────────\n`;
+    content += `*Halaman:* ${page} / ${totalPage}\n`;
+    content += `────────────────────────\n`;
 
     for (const command of allCommand) {
-        content += `\n|-----------------|\n- Nama : ${command.name}\n- Deskripsi : ${command.description}${command.usage ? `\n- Penggunaan : ${command.usage}` : ''}`
+        content += `*${command.name}*\n`;
+        content += `_${command.description}_\n`;
+        if (command.usage) {
+            content += `Contoh: ${command.usage}\n`;
+        }
+        content += `────────────────────────\n`;
     }
 
-    content += `\n\n*Jangan lupa untuk mention jika sedang didalam grup*`;
-    return content
+    content += `\n🔹 Gunakan perintah /next atau /prev untuk navigasi halaman.`;
+    content += `\n🔸 Jangan lupa mention bot jika di grup!`;
+
+    return content;
 }

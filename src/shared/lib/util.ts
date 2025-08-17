@@ -15,7 +15,6 @@ export async function childProcessCallback(cmd: string, ...args: string[]): Prom
         });
 
         process.on('exit', code => {
-            console.log(`Process ended with ${code}`);
             resolve(output);
         });
 

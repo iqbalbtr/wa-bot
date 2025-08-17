@@ -1,4 +1,3 @@
-import { proto } from "@whiskeysockets/baileys";
 import db from "../../database";
 import { blockedUsers } from "../../database/schema";
 import { ClientContextType } from "../type/client";

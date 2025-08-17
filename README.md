@@ -1,166 +1,110 @@
-# Documentation
+# Whatsapp Bot System
 
-## Getting Started
+## Instalasi
 
-### 1. Install Dependencies
-Pastikan Anda telah menginstal semua dependensi yang diperlukan dengan menjalankan perintah berikut:
-```sh
-npm install
-```
+1. Clone proyek dari github
+   
+   ```
+   git clone 
+   ```
+2. Install Dependensi
+   
+   ```
+   npm install
+   ```
 
-### 2. Configure Environment Variables
-Buat file `.env` di root direktori dan konfigurasi sesuai kebutuhan. Anda bisa melihat konfigurasi contoh di [sini](/.env).
+   >[!NOTE]
+   > Kalian bisa menggunakan `pnpm` namun ada beberapa package yang tidak berjalan
+   > Hal ini dikarenakan ada fitur dari command bot menggunakan package dari 
+   > luar dan tidak berjalan secara native dengan nodejs. Penggunana runtime `bun` dan lainnya masih belum di coba.
+   > Kalian bebas jika ingin menggunakan runtime lainnya.
 
-### 3. Build and Run the Project
-Untuk menjalankan proyek dalam mode pengembangan, gunakan perintah berikut:
-```sh
-npm run dev
-```
-Untuk mode produksi, lakukan build proyek dan jalankan aplikasinya:
-```sh
-npm run build
-npm run start
-```
+### Package Tambahan
 
-### 4. Scan Barcode
-Setelah menjalankan proyek, ikuti instruksi di terminal untuk memindai QR Code guna melakukan autentikasi bot WhatsApp.
+Berikut adalah beberapa package eksternal yang perlu diinstal agar fitur tertentu pada bot dapat berjalan dengan baik:
 
----
+- **ffmpeg**  
+    - [Panduan Unduh/Instalasi](https://ffmpeg.org/download.html)  
+    - Digunakan oleh: [`downloader/yt-video`](/src/bot/command/downloader.ts), [`sticker`](/src/bot/command/sticker.ts)
 
-## Folder Structure
+- **yt-dlp**  
+    - [Panduan Unduh/Instalasi](https://github.com/yt-dlp/yt-dlp#installation)  
+    - Digunakan oleh: [`downloader/yt-video`](/src/bot/command/downloader.ts)
 
-Struktur direktori proyek:
-```
-src
-│   main.ts        # Titik masuk utama aplikasi
-│
-├───bot
-│       bot.ts     # Konfigurasi bot WhatsApp
-│
-├───command        # Tambahkan perintah baru di sini menggunakan CommandType
-│       help.ts
-│       remove-bg.ts
-│       status.ts
-│       sticker.ts
-│
-├───event          # Handler event WhatsApp Web.js
-│       message.ts
-│       qr-code.ts
-│       ready.ts
-│
-├───lib
-│       util.ts    # Fungsi utilitas yang sering digunakan
-│
-├───middleware     # Middleware seperti rate limiter
-│       limiter.ts
-│
-└───types          # Definisi tipe TypeScript
-        client.d.ts
-```
+- **pdf2docx**  
+    - [Panduan Unduh/Instalasi](https://pypi.org/project/pdf2docx/)  
+    - Digunakan oleh: [`converter/pdf2docx`](/src/bot/command/converter.ts)
 
----
+> [!NOTE]
+> Instalasi package di atas bersifat opsional, namun beberapa command tidak akan berjalan tanpa package terkait. Jika tidak ingin menggunakan fitur tertentu, Anda dapat menghapus atau menonaktifkan command yang membutuhkan package tersebut.
 
-## How to Create a New Command
 
-### 1. Create a New File
-Tambahkan file baru di direktori `src/command`. Bisa dibuat secara manual atau langsung akses [di sini](/src/command/).
+### Menjalankan proyek
+   
+1. Membuat environemt
+   
+   Salin isi dari `.env.example` lalu paste didalam file `.env`, pastikan letak file didalam root proyek. Didalam dapat melakukan configurasi port, prefix bot, dll.
+   
+2. Membuat migrasi
 
-### 2. Command Code Structure
-Berikut adalah contoh struktur kode untuk sebuah command:
+    ```
+    npm run db:generate
+    ```
+   
+3. Menjalankan migrasi
 
-```typescript
-import { CommandType } from "../types/client";
-import { createSessionUser, generateSessionFooterContent, deleteSessionUser } from "../lib/session";
+    ```
+    npm run db:migrate
+    ```
+4. Menajalankan proyek 
 
-module.exports = {
-  // Nama perintah yang digunakan untuk pemanggilan
-  // Nama akan selalu di awali prefix contoh : {prefix}name
-  name: "name",
-  description: "Deskripsi perintah",
-  
-  // Fungsi utama yang dieksekusi saat perintah dipanggil
-  execute: (message, client) => {
-    // Membuat sesi baru untuk perintah ini
-    createSessionUser('name', message, { parse: 'tutorial' })
+    a. Dev Mode
+
+    Kalian bisa menjalankan proyek di mode dev dengan perintah cmd berikut.
     
-    // gunakan fungsi ini untuk membuat daftar sub-command yang tersedia secara dinamis
-    let content = generateSessionFooterContent('name');
-    message.reply(content);
-  },
-  
-  // Sub-command yang hanya bisa diakses dalam sesi
-  // Jika sesi sudah di buat fungsi utama command tidak akan di panggil dan hanya memanggil sub command yang berada disini
-  commands: [
-    {
-      name: "/tutorial",
-      description: "Deskripsi sub-command tutorial",
-      execute: (message, client, data) => {
-        console.log(data); // Output: { parse: "tutorial" }
-        
-        // Memperbarui data sesi untuk percakapan berikutnya
-        createSessionUser('name', message, { parse: 'tutorial2' });
+    ```
+    npm run dev
+    ```
 
-        // Gunakan fungsi ini jika ingin menghapus sesi
-        deleteSessionUser(message);
-      }
-    }
-  ]
-} as CommandType;
-```
+    b. Prod Mode
 
-### 3. Understanding Sessions
-- `createSessionUser(name, message, data)`: Membuat sesi berdasarkan perintah yang dipanggil.
-- `generateSessionFooterContent(name)`: Menampilkan daftar sub-command yang tersedia.
-- `deleteSessionUser(message)`: Menghapus sesi ketika sudah tidak diperlukan.
+    Sebelum menjalankan prod pastikan untuk melakukan build proyek terlebih dahulu
+    
+    ```
+    # Melakukan proses build
+    npm run build
 
----
+    # Menjalankan proyek hasil dari build
+    npm run start
+    ```
 
-## Types and Interfaces
+    Setelah menjalankan akan muncul `qrcode`. Kalian dapat melakukan scan terlebih dahulu untuk menghubungkan akun whatsapp kalian pada bot. Proses ini dilakukan sekali, namun jika ada kendala kalian bisa melakukan reset dengan menghapus folder `/.wa-auth` terletak di root proyek.
 
-### Command Types
-```typescript
-export type CommandSessionContentType = {
-    name: string;
-    description: string;
-    execute: (message: Message, client: ClientType, data: object | any) => void;
-};
+    >[!NOTE]
+    > Hasil dari proses build akan disimpan di folder root `/dist`, jika kalian ingin merubah
+    > bisa menlakukan update di `tsconfig`
 
-export type CommandType = {
-    name: string;
-    description: string;
-    usage?: string;
-    execute: (message: Message, client: ClientType) => void;
-    commands?: CommandSessionContentType[];
-};
+## Struktur Proyek
 
-export type SessionUserType = {
-    session: CommandType;
-    data: object | any;
-};
-```
+Proyek ini dibagi menjadi 3 bagian utama yaitu `API` `BOT` `SCHEDULER` tiap bagian memiliki proses tersendiri dan saling berkaitan. Berikut merupakan pembagian fungsi dari tiap tiap bagian :
 
-### Client Type
-```typescript
-export interface ClientType extends Client {
-    commands: Map<string, CommandType>;
-    limiter: {
-        max: number;
-        users: Map<string, number>;
-        userTotal: number;
-        startTime: number;
-    };
-    session: {
-        users: Map<string, SessionUserType>;
-    };
-}
-```
+1. **BOT**
 
----
+    Bagian ini bertugas untuk menjalankan fungsi dan proses dari bot whatsapp mulai mengelola command, pesan masuk, atau bahkan middleware dari command. Ada beberaoa fungsi dari bot ini yang digunakan pada bagian `API` dan `SCHEDULER` utamanya adalah **pengiriman pesan.** Pastikan untuk bot dalam keadaan login agar fungsi tersebut dapat berjalan.
 
-## Best Practices
-- **Gunakan sesi dengan bijak**: Jangan simpan terlalu banyak data di dalam sesi untuk menghindari memory leak.
-- **Pisahkan fungsi utama dan utilitas**: Simpan helper functions dalam `lib/` agar kode lebih modular.
--  **Gunakan TypeScript dengan baik**: Pastikan semua fungsi memiliki tipe data yang sesuai agar lebih aman dan maintainable.
--  **Log setiap error**: Pastikan setiap catch block memiliki `console.log(error)` agar memudahkan debugging.
--  **Bersihkan sesi setelah digunakan**: Gunakan `deleteSessionUser(message)` setelah sesi tidak dibutuhkan.
+2. **API**
+   
+   Bagian ini sebagai jembatan antara sistem dari luar dengan bot. Kalian bisa melakukan integrasi dengan sistem dari luar proyek ini melalui **API** yang disediakan. kalian bisa membaca dokumentasi terkait API di [sini](/docs/api/).
 
+3. **SCHEDULER**
+   
+   Bagian ini digunakan untuk menjalankan beberapa fungsi dari jadwal, hal ini dilakukan untuk menajaga sesi bot agar tetap bersih dan meminimalisir dari overload sesi yang tidak dibersihkan. Bagian ini juga mengatur fitur tambahan seperti `pesan terjadwal` dari bot.
+
+### Membuat Command
+
+
+
+### Membuat Event
+### Menambahkan middleware
+### Menyimpan sesi commnad
+### Menyimpan data sesi commnad

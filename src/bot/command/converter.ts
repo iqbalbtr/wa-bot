@@ -23,11 +23,16 @@ export default {
         {
             name: "/pdf2docx",
             description: "Convert a PDF file to DOCX format",
-            execute: async (message, client) => {
+            execute: async (message, client, payload) => {
                 const session = client.getSession();
                 if (!session || !message.key?.remoteJid) return;
                 try {
-                    logger.info("Converting PDF to DOCX");
+                                        
+                    if (payload?.message.documentMessage?.mimetype !== "application/pdf" || Number(payload?.message.documentMessage.fileLength) >= 20 * 1024 * 1024) {
+                        await client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan file PDF yang valid dan tidak lebih dari 20MB." });
+                        return;
+                    }
+              
                     const media = await downloadMediaMessage(message, "buffer", {});
 
                     if (!media) {
@@ -104,6 +109,16 @@ export default {
 
                             if (!isImage) {
                                 client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan file yang dikirim adalah gambar." });
+                                return;
+                            }
+
+                            const fileLength =
+                                payload.message.imageMessage?.fileLength ||
+                                payload.message.documentMessage?.fileLength ||
+                                0;
+
+                            if (Number(fileLength) >= 25 * 1024 * 1024) {
+                                client.messageClient.sendMessage(message.key.remoteJid, { text: "Ukuran gambar tidak boleh lebih dari 20MB." });
                                 return;
                             }
 

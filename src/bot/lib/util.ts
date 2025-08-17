@@ -77,8 +77,7 @@ export function extractMessageFromGroupMessage(text: string) {
 
 
 export function generateSessionFooterContent(...names: string[]) {
-
-    let session: CommandType | undefined = undefined
+    let session: CommandType | undefined = undefined;
 
     for (const name of names) {
         if (!session) {
@@ -89,21 +88,20 @@ export function generateSessionFooterContent(...names: string[]) {
     }
 
     if (!session?.commands) {
-        return ''
+        return '';
     }
 
-    let content = 'Gunakan command berikut'
-    if (session.commands) {
-        session.commands.forEach((text) => {
-            content += `\n- ` + "*`" + `${text.name}` + "`*" + ` ${text.description}`
-        })
-    }
+    let content = 'Gunakan command berikut:\n';
+
+    session.commands.forEach((cmd) => {
+        content += `\n  • *\`${cmd.name}\`* - ${cmd.description}`;
+    });
 
     if (names.length > 1) {
-        content += "\n- *`/back`* untuk kembali"
+        content += `\n\n  • *\`/back\`* - untuk kembali`;
     }
 
-    content += "\n- *`/exit`* untuk keluar"
+    content += `\n  • *\`/exit\`* - untuk keluar`;
 
-    return content
+    return content;
 }
