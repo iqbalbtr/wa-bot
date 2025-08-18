@@ -8,21 +8,26 @@ import logger from "../../shared/lib/logger";
 export default {
     name: "img2text",
     description: "Mengonversi gambar yang terdapat text menjadi text",
-    usage: `\`${prefix}img2text\``,
+    usage: `\`${prefix}img2text\` kirim gambar dengan caption ini.`,
     execute: async (message, client, payload) => {
         const session = client.getSession();
         if (!session || !message.key?.remoteJid) return;
 
         try {
-
             if (!payload.message.imageMessage?.mimetype?.startsWith("image")) {
-                await client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan gambar juga dikirim bersama commandnya" });
+                await client.messageClient.sendMessage(
+                    message.key.remoteJid,
+                    { text: "Gambar tidak terdeteksi. Silakan kirim gambar bersamaan dengan perintah ini sebagai caption." }
+                );
                 return;
             }
 
             const buffer = await downloadMediaMessage(message, "buffer", {});
             if (!buffer) {
-                await client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan gambar juga dikirim bersama commandnya" });
+                await client.messageClient.sendMessage(
+                    message.key.remoteJid,
+                    { text: "Gagal mengunduh gambar. Pastikan gambar dikirim dengan benar dan coba lagi." }
+                );
                 return;
             }
 

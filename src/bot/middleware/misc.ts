@@ -1,8 +1,4 @@
-import { eq } from "drizzle-orm";
-import db from "../../database";
-import { groupSettings } from "../../database/schema";
 import { ClientContextType } from "../type/client";
-import { groupEnumSetting } from "../command/group";
 
 export function miscMiddleware(context: ClientContextType, next: () => void) {
 

@@ -23,13 +23,14 @@ export default {
         {
             name: "/pdf2docx",
             description: "Convert a PDF file to DOCX format",
+            usage: `${prefix}pdf2docx kirim file pdf dengan caption ini.`,
             execute: async (message, client, payload) => {
                 const session = client.getSession();
                 if (!session || !message.key?.remoteJid) return;
                 try {
                                         
-                    if (payload?.message.documentMessage?.mimetype !== "application/pdf" || Number(payload?.message.documentMessage.fileLength) >= 20 * 1024 * 1024) {
-                        await client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan file PDF yang valid dan tidak lebih dari 20MB." });
+                    if (payload?.message.documentMessage?.mimetype !== "application/pdf" || Number(payload?.message.documentMessage.fileLength) >=  60 * 1024 * 1024) {
+                        await client.messageClient.sendMessage(message.key.remoteJid, { text: "Pastikan file PDF yang valid dan tidak lebih dari 60MB." });
                         return;
                     }
               

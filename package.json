@@ -1,7 +1,7 @@
 {
-  "name": "wa-bot",
-  "version": "1.0.0",
-  "description": "",
+  "name": "wa-bot-system",
+  "version": "1.0.1",
+  "description": "A WhatsApp bot system built with Node.js, TypeScript, and Baileys for automation and integrations.",
   "main": "src/main.js",
   "scripts": {
     "dev": "nodemon src/main.ts",
@@ -12,8 +12,7 @@
     "db:migrate": "drizzle-kit push",
     "db:generate": "drizzle-kit generate"
   },
-  "keywords": [],
-  "author": "",
+  "author": "iqbalbtr",
   "license": "ISC",
   "packageManager": "pnpm@10.14.0",
   "dependencies": {

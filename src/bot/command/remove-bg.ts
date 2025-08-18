@@ -9,24 +9,37 @@ import logger from "../../shared/lib/logger";
 export default {
   name: "rem-bg",
   description: "Menghapus latar belakang dari gambar yang dikirim",
-  usage: `\`${prefix}rem-bg\``,
-  execute: async (message, client) => {
+  usage: `\`${prefix}rem-bg\` kirim gambar dengan caption ini.`,
+  execute: async (message, client, payload) => {
     const session = client.getSession();
     if (!session || !message.key?.remoteJid) return;
 
     try {
       const buffer = await downloadMediaMessage(message, "buffer", {});
       if (!buffer) {
-        await session.sendMessage(message.key.remoteJid, { text: "Pastikan gambarnya juga dikirim bersama commandnya" });
+        await session.sendMessage(message.key.remoteJid, { text: "❌ Gambar tidak ditemukan. Silakan kirim gambar dengan caption *rem-bg*." });
         return;
       }
 
-      if (buffer.length >= 7 * 1024 * 1024) {
-        await session.sendMessage(message.key.remoteJid, { text: "Ukuran gambar terlalu besar" });
+      if (buffer.length >= 20 * 1024 * 1024) {
+        await session.sendMessage(message.key.remoteJid, { text: "❌ Ukuran gambar terlalu besar (maksimal 20MB). Silakan kirim gambar dengan ukuran lebih kecil." });
+        return;
+      }
+
+      if(
+        payload.message.imageMessage?.mimetype !== "image/png" && 
+        payload.message.imageMessage?.mimetype !== "image/jpeg" &&
+        payload.message.documentMessage?.mimetype !== "image/png" &&
+        payload.message.documentMessage?.mimetype !== "image/jpeg"
+      ) {
+        await session.sendMessage(message.key.remoteJid, { text: "❌ File yang dikirim bukan gambar yang didukung (PNG/JPG/JPEG)." });
         return;
       }
 
       const { outputFolderFile, outputFolder, filename } = saveFileToTemp(new Uint8Array(buffer), ['img', 'rem-bg'], '.png');
+
+      // Kirim pesan proses
+      await session.sendMessage(message.key.remoteJid, { text: "⏳ Sedang memproses gambar, mohon tunggu..." });
 
       const removeBgBuffer = await removeBackground(outputFolderFile, {
         output: {
